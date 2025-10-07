@@ -1,35 +1,35 @@
+// backend/bin/server.dart
+
 import 'dart:io';
-
+import 'dart:convert';
 import 'package:shelf/shelf.dart';
-import 'package:shelf/shelf_io.dart';
+import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
+import 'package:postgres/postgres.dart';
+import 'package:dotenv/dotenv.dart'; 
 
-// Configure routes.
-final _router =
-    Router()
-      ..get('/', _rootHandler)
-      ..get('/echo/<message>', _echoHandler);
+Future<void> main() async {
+  
+  final dotEnv = DotEnv(includePlatformEnvironment: true)..load();
 
-Response _rootHandler(Request req) {
-  return Response.ok('Hello, World!\n');
-}
+  
+  final connection = PostgreSQLConnection(
+    dotEnv['DB_HOST'] ?? 'localhost', 
+    int.parse(dotEnv['DB_PORT'] ?? '5432'),
+    dotEnv['DB_NAME'] ?? 'mydatabase',
+    username: dotEnv['DB_USER'] ?? 'user',
+    password: dotEnv['DB_PASSWORD'] ?? 'password',
+  );
 
-Response _echoHandler(Request request) {
-  final message = request.params['message'];
-  return Response.ok('$message\n');
-}
+  await connection.open();
+  print('Connected to PostgreSQL!');
 
-void main(List<String> args) async {
-  // Use any available host or container IP (usually `0.0.0.0`).
-  final ip = InternetAddress.anyIPv4;
+  final app = Router();
 
-  // Configure a pipeline that logs requests.
-  final handler = Pipeline()
-      .addMiddleware(logRequests())
-      .addHandler(_router.call);
+  app.get('/', (Request request) {
+  return Response.ok('API server is running.');
+});
 
-  // For running in containers, we respect the PORT environment variable.
-  final port = int.parse(Platform.environment['PORT'] ?? '8080');
-  final server = await serve(handler, ip, port);
+  final server = await io.serve(app, 'localhost', 8080);
   print('Server listening on port ${server.port}');
 }
