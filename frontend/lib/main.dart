@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/menu/unconnected_menu.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:io' show Platform;
+import 'pages/connected_printer.dart';
+import 'services/zebra_service.dart';
 
 
 void main() {
@@ -36,6 +38,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  bool _isDiscoveredPrintersExpanded = false;
+  bool _isDiscovering = false; 
+  List<String> _printerNames = []; 
 
   @override
   void initState() {
@@ -119,6 +124,77 @@ class _MyHomePageState extends State<MyHomePage> {
       },
     );
   }
+
+  void _showManualConnectionDialog() {
+    final TextEditingController ipController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Manual Connection'),
+          content: TextField(
+            controller: ipController,
+            decoration: const InputDecoration(
+              hintText: "Enter IP Address or DNS Name",
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final String address = ipController.text.trim();
+                if (address.isEmpty) return;
+
+                Navigator.pop(context);
+
+                //Show a loading indicator here
+
+                final bool isConnected = await ZebraService.connectToPrinter(address);
+
+                if (mounted) { 
+                  if (isConnected) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ConnectedPrinter(printerName: address),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to connect to $address'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Connect'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _discoverAndShowPrinters() async {
+    setState(() {
+      _isDiscovering = true;
+      _printerNames = [];
+    });
+
+    final foundPrinters = await ZebraService.discoverPrinters();
+
+    setState(() {
+      _printerNames = foundPrinters;
+      _isDiscovering = false;
+    });
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -135,176 +211,254 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
-      drawer: Drawer(
-        backgroundColor: Colors.white,
-      child: ListView(
-        children: [
-          Container(
-              padding: EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-              ),
-              child: Text(
-              'Menu',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 24,
-              ),
-            ),
-          ),
-        Divider(thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0,),
-        ListTile(
-          leading: Icon(Icons.print),
-          title: Text('Printer Database'),
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder:  (context) => PrinterDatabasePage())
-            );
-          },
-        ),
-        Divider(thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0,),
-        ListTile(
-          leading: Icon(Icons.help_outline),
-          title: Text('Zebra Assist'),
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder:  (context) => ZebraAssistPage())
-            );
-          },
-        ),
-        Divider(thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0,),
-        ListTile(
-          leading: Icon(Icons.settings),
-          title: Text('Settings'),
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder:  (context) => SettingsPage())
-            );
-          },
-        ),
-        Divider(thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0,),
-      ],
-    ),
-  ),
+      drawer: const UnconnectedMenu(), 
       body: Center(
+        child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Container(
-                height: 70.0,
-                width: 200.0,
-                margin: EdgeInsets.all(40.0),
-                padding: EdgeInsets.all(20.0),
+                height: 150.0,
+                width: 150.0,
+                margin: EdgeInsets.only(top: 15.0, bottom: 20.0),
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/Alertcircle.png'),
+                    fit: BoxFit.cover,
+                  ),
+                  borderRadius: BorderRadius.circular(25.0),
+                  color: Color(0xFFF5F5F8)
+                ),
+              ),
+                Container(
+                height: 50.0,
+                width: 150.0,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25.0),
                   color: Colors.white
                 ),
                 child: FittedBox(
-                  fit: BoxFit.contain,
+                  fit: BoxFit.none,
                   child: Text(
-                  'Name Placeholder',
-                  style: TextStyle(
-                    color: Colors.black
+                    'Not Connected',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold
                     ),
                   ),
+                )
               ),
+              Container(
+                margin: const EdgeInsets.all(24.0),
+                child: InkWell(
+                  onTap: _showManualConnectionDialog, 
+                  borderRadius: BorderRadius.circular(25.0), 
+                  child: Container(
+                    height: 50.0,
+                    width: 290.0,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25.0),
+                      color: Colors.white
+                    ),
+                    child: Row( 
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Manual Connection',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold
+                          ),
+                        ),
+                        Icon( 
+                          Icons.arrow_forward_ios,
+                          color: Colors.grey[600],
+                          size: 18.0,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-                Container(
-                height: 200.0,
-                width: 200.0,
-                padding: EdgeInsets.all(40.0),
+              Container(
+                margin: const EdgeInsets.only(bottom: 24.0),
+                width: 290.0,
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min, 
+                    children: [
+                      InkWell(
+                        highlightColor: Colors.transparent,
+                        splashColor: Colors.grey.withOpacity(0.2),
+                        borderRadius: _isDiscoveredPrintersExpanded
+                            ? const BorderRadius.vertical(top: Radius.circular(25.0))
+                            : BorderRadius.circular(25.0),
+                        onTap: () {
+                          final isOpening = !_isDiscoveredPrintersExpanded;
+                          setState(() {
+                            _isDiscoveredPrintersExpanded = isOpening;
+                          });
+
+                          if (isOpening) {
+                            _discoverAndShowPrinters();
+                          }
+                        },
+                        child: Container(
+                          height: 50.0,
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Discovered Printers',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Icon(
+                                _isDiscoveredPrintersExpanded
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                                color: Colors.grey[600],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (_isDiscoveredPrintersExpanded)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                          child: Column(
+                            children: [
+                              const Divider(indent: 10, endIndent: 10),
+                              if (_isDiscovering)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                                  child: CircularProgressIndicator(),
+                                )
+                              else if (_printerNames.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Text(
+                                    'No printers found.',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                )
+                              else
+                                ..._printerNames.map((name) {
+                                  return _buildPrinterTile(name);
+                                }).toList(),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.all(24.0),
+                height: 450.0,
+                width: 290.0,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25.0),
-                  color: Colors.white
+                  color: Colors.white,
                 ),
-                child: Text(
-                  'Image placeholder',
-                  style: TextStyle(
-                    color: Colors.black
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center, 
+                  children: [
+                    Text(
+                      'Instructions',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 18, 
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+                    SizedBox(height: 15), 
+                    Container(
+                      height: 100.0,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF5F5F8),
+                        borderRadius: BorderRadius.circular(25.0),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '1. Ensure the printer is on by checking that the LEDs are lit. If the printer is not on, press the power button',
+                          style: TextStyle(color: Colors.black),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      margin: EdgeInsets.only(top: 15.0),
+                      height: 100.0,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF5F5F8),
+                        borderRadius: BorderRadius.circular(25.0),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '2. Use Limited Pairing Mode if bluetooth connection has issues. Hold the printer feed button until the LED begins flashing.',
+                          style: TextStyle(color: Colors.black),
+                        ),
+                      ),
+                    ),
+
+                    Container(
+                      margin: EdgeInsets.only(top: 15.0),
+                      height: 100.0,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF5F5F8),
+                        borderRadius: BorderRadius.circular(25.0),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '3. Then tap the printer in the Discovered Printers.',
+                          style: TextStyle(color: Colors.black),
+                        ),
+                      ),
+                    ),
+
+
+
+                  ],
+                ),
               ),
             ],
           ),
-            ),
-    );
-  }
-}
-
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Settings'),
-        backgroundColor: Color(0xFFF5F5F8),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(1.0),
-          child: Container(
-            color: Colors.grey,
-            height: 1.0,
-          ),
         ),
       ),
-      body: Center(
-        child: Text('Settings Page'),
-      ),
     );
   }
-}
 
-class PrinterDatabasePage extends StatelessWidget {
-  const PrinterDatabasePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Printer Database'),
-        backgroundColor: Color(0xFFF5F5F8),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(1.0),
-          child: Container(
-            color: Colors.grey,
-            height: 1.0,
-          ),
+  Widget _buildPrinterTile(String printerName) {
+    return ListTile(
+      leading: Icon(Icons.print, color: Colors.grey[600]),
+      title: Text(
+        printerName,
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w500,
         ),
       ),
-      body: Center(
-        child: Text('Printer Database Page'),
-      ),
-    );
-  }
-}
-
-class ZebraAssistPage extends StatelessWidget {
-  const ZebraAssistPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Zebra Assist'),
-        backgroundColor: Color(0xFFF5F5F8),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(1.0),
-          child: Container(
-            color: Colors.grey,
-            height: 1.0,
+      onTap: () {
+        print('Tapped on $printerName');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConnectedPrinter(printerName: printerName),
           ),
-        ),
-      ),
-      body: Center(
-        child: Text('Zebra Assist Page'),
-      ),
+        );
+      },
     );
   }
 }
+
+
+
+
+

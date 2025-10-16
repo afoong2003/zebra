@@ -1,4 +1,3 @@
-// backend/bin/server.dart
 
 import 'dart:io';
 import 'dart:convert';
