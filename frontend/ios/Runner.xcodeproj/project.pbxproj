@@ -15,9 +15,10 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A7873DDD344879C9FEBF78AD /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA5762004742E0290160869D /* Pods_Runner.framework */; };
+		CF0FA2BA2EA5D968007FBAC8 /* ZSDK_API.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */; };
+		CF0FA2BB2EA5D968007FBAC8 /* ZSDK_API.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		CF7420802EA0543E00DCC11F /* ExternalAccessory.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF74207F2EA0543E00DCC11F /* ExternalAccessory.framework */; };
-		CF88C6E42EA04BB700546E4E /* ZSDK_API.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */; };
-		CF88C6E52EA04BB700546E4E /* ZSDK_API.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		CFA2B77A2EA18B300099E547 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFA2B7792EA18B300099E547 /* UIKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,13 +32,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
+		CF0FA2BC2EA5D968007FBAC8 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				CF88C6E52EA04BB700546E4E /* ZSDK_API.xcframework in Embed Frameworks */,
+				CF0FA2BB2EA5D968007FBAC8 /* ZSDK_API.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -65,6 +66,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CF74207F2EA0543E00DCC11F /* ExternalAccessory.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ExternalAccessory.framework; path = System/Library/Frameworks/ExternalAccessory.framework; sourceTree = SDKROOT; };
 		CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = ZSDK_API.xcframework; path = Frameworks/ZSDK_API.xcframework; sourceTree = "<group>"; };
+		CFA2B7792EA18B300099E547 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		EA5762004742E0290160869D /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -73,8 +75,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CF0FA2BA2EA5D968007FBAC8 /* ZSDK_API.xcframework in Frameworks */,
 				CF7420802EA0543E00DCC11F /* ExternalAccessory.framework in Frameworks */,
-				CF88C6E42EA04BB700546E4E /* ZSDK_API.xcframework in Frameworks */,
+				CFA2B77A2EA18B300099E547 /* UIKit.framework in Frameworks */,
 				A7873DDD344879C9FEBF78AD /* Pods_Runner.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -100,6 +103,7 @@
 		34D3F6FD9E24A49B990FE1A7 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				CFA2B7792EA18B300099E547 /* UIKit.framework */,
 				CF74207F2EA0543E00DCC11F /* ExternalAccessory.framework */,
 				CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */,
 				EA5762004742E0290160869D /* Pods_Runner.framework */,
@@ -194,9 +198,9 @@
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
-				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				C2DA415CCAF6366390CC30BB /* [CP] Copy Pods Resources */,
+				CF0FA2BC2EA5D968007FBAC8 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);

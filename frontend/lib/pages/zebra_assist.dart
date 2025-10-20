@@ -12,7 +12,7 @@ class ZebraAssist extends StatelessWidget {
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(1.0),
           child: Container(
-            color: Colors.grey,
+            color: Colors.black,
             height: 1.0,
           ),
         ),

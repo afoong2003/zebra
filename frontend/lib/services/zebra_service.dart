@@ -22,4 +22,14 @@ class ZebraService {
       return false;
     }
   }
+
+  static Future<bool> printTestPage(String address) async {
+    try {
+      final bool? success = await _channel.invokeMethod('printTestPage', {'address': address});
+      return success ?? false;
+    } on PlatformException catch (e) {
+      print("Service: Failed to print test page: '${e.message}'.");
+      return false;
+    }
+  }
 }

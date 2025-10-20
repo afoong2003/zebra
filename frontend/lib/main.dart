@@ -206,7 +206,7 @@ class _MyHomePageState extends State<MyHomePage> {
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(1.0),
           child: Container(
-            color: Colors.grey,
+            color: Colors.black,
             height: 1.0,
           ),
         ),
@@ -319,11 +319,20 @@ class _MyHomePageState extends State<MyHomePage> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              Icon(
-                                _isDiscoveredPrintersExpanded
-                                    ? Icons.expand_less
-                                    : Icons.expand_more,
-                                color: Colors.grey[600],
+                              Row(
+                                children: [
+                                  if (_isDiscoveredPrintersExpanded)
+                                    IconButton(
+                                      icon: Icon(Icons.refresh, color: Colors.grey[600]),
+                                      onPressed: _discoverAndShowPrinters,
+                                    ),
+                                  Icon(
+                                    _isDiscoveredPrintersExpanded
+                                        ? Icons.expand_less
+                                        : Icons.expand_more,
+                                    color: Colors.grey[600],
+                                  ),
+                                ],
                               ),
                             ],
                           ),

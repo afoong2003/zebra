@@ -1,5 +1,7 @@
 import UIKit
 import Flutter
+import ExternalAccessory
+import ZSDK_API 
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -19,8 +21,19 @@ import Flutter
       (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
       
       if call.method == "discoverPrinters" {
-        let mockPrinters = ["Mock Printer 1 (iOS)", "Mock Printer 2 (iOS)"]
-        result(mockPrinters)
+        let accessories = EAAccessoryManager.shared().connectedAccessories
+        let zebraPrinters = accessories.filter { $0.protocolStrings.contains("com.zebra.rawport") }
+        var printerNames = zebraPrinters.map { $0.name }
+        
+        print("Swift: Discovered real printers: \(printerNames)")
+        
+        if printerNames.isEmpty {
+            print("Swift: No real printers found. Adding mock data for UI testing.")
+            printerNames.append("Mock ZD620 (Test)")
+            printerNames.append("Mock ZQ521 (Test)")
+        }
+        
+        result(printerNames)
 
       } else if call.method == "connectToPrinter" {
         guard let args = call.arguments as? [String: Any],
@@ -30,11 +43,70 @@ import Flutter
         }
 
         print("Swift: Received request to connect to \(address)")
-
-        // TODO: zebra SDK connection logic.
-        let isSuccess = !address.isEmpty
         
-        result(isSuccess)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let connection = self.getConnection(for: address)
+            var isConnected = false
+            
+            if connection.open() {
+                isConnected = true
+                connection.close()
+            }
+            
+            DispatchQueue.main.async {
+                result(isConnected)
+            }
+        }
+
+      } else if call.method == "printTestPage" {
+        guard let args = call.arguments as? [String: Any],
+              let address = args["address"] as? String else {
+          result(FlutterError(code: "INVALID_ARGUMENT", message: "Address not provided", details: nil))
+          return
+        }
+
+        print("Swift: Received request to print test page to \(address)")
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let connection = self.getConnection(for: address)
+            var success = false
+            
+            do {
+                if connection.open() {
+                    print("Swift: Connection opened successfully.")
+                    
+                    let zplString = """
+                    ^XA
+                    ^FO50,50
+                    ^A0N,50,50
+                    ^FDHello World^FS
+                    ^XZ
+                    """
+                    
+                    let zplData = zplString.data(using: .utf8)
+                    var error: NSError?
+                    
+                    try connection.getToolsUtil().send(zplData, withResponse: &error)
+                    
+                    if error == nil {
+                        print("Swift: ZPL data sent successfully.")
+                        success = true
+                    } else {
+                        print("Swift: Error sending ZPL data: \(error?.localizedDescription ?? "Unknown error")")
+                    }
+                    
+                    connection.close()
+                } else {
+                    print("Swift: Failed to open connection.")
+                }
+            } catch {
+                print("Swift: An exception occurred: \(error.localizedDescription)")
+            }
+            
+            DispatchQueue.main.async {
+                result(success)
+            }
+        }
 
       } else {
         result(FlutterMethodNotImplemented)
@@ -43,5 +115,18 @@ import Flutter
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private func getConnection(for address: String) -> ZebraPrinterConnection {
+      let isIpAddress = address.split(separator: ".").count == 4
+      
+      if isIpAddress {
+          print("Swift: Creating TCP connection for IP: \(address)")
+          return TcpPrinterConnection(address: address, andWithPortNumber: 6101)
+      } else {
+          print("Swift: Creating Bluetooth connection for name: \(address)")
+          let serialNumber = EAAccessoryManager.shared().connectedAccessories.first(where: { $0.name == address })?.serialNumber ?? ""
+          return MfiBtPrinterConnection(serialNumber: serialNumber)
+      }
   }
 }

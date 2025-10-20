@@ -32,7 +32,7 @@ class ConnectedMenu extends StatelessWidget {
           Divider(
               thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0),
           ListTile(
-            leading: Icon(Icons.home),
+            leading: Icon(Icons.home_outlined),
             title: Text('Home'),
             onTap: () {
               Navigator.pop(context); 
@@ -47,7 +47,7 @@ class ConnectedMenu extends StatelessWidget {
           Divider(
               thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0),
           ListTile(
-            leading: Icon(Icons.help),
+            leading: Icon(Icons.info_outline),
             title: Text('Documentation'),
             onTap: () {
               Navigator.pop(context);
@@ -58,7 +58,7 @@ class ConnectedMenu extends StatelessWidget {
           Divider(
               thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0),
           ListTile(
-            leading: Icon(Icons.info),
+            leading: Icon(Icons.help_outline),
             title: Text('Zebra Assist'),
             onTap: () {
               Navigator.pop(context);
@@ -69,7 +69,7 @@ class ConnectedMenu extends StatelessWidget {
           Divider(
               thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0),
           ListTile(
-            leading: Icon(Icons.info),
+            leading: Icon(Icons.print_outlined),
             title: Text('About'),
             onTap: () {
               Navigator.pop(context);
@@ -80,7 +80,7 @@ class ConnectedMenu extends StatelessWidget {
           Divider(
               thickness: 1, color: Colors.black, indent: 16.0, endIndent: 16.0),
           ListTile(
-            leading: Icon(Icons.settings),
+            leading: Icon(Icons.settings_outlined),
             title: Text('Settings'),
             onTap: () {
               Navigator.pop(context);
