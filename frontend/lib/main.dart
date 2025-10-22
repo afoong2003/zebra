@@ -291,8 +291,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     mainAxisSize: MainAxisSize.min, 
                     children: [
                       InkWell(
-                        highlightColor: Colors.transparent,
-                        splashColor: Colors.grey.withOpacity(0.2),
                         borderRadius: _isDiscoveredPrintersExpanded
                             ? const BorderRadius.vertical(top: Radius.circular(25.0))
                             : BorderRadius.circular(25.0),

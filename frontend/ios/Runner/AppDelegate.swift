@@ -1,7 +1,6 @@
 import UIKit
 import Flutter
 import ExternalAccessory
-import ZSDK_API 
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -75,6 +74,8 @@ import ZSDK_API
                 if connection.open() {
                     print("Swift: Connection opened successfully.")
                     
+                    let printer = try ZebraPrinterFactory.getInstance(connection)
+                    
                     let zplString = """
                     ^XA
                     ^FO50,50
@@ -82,19 +83,23 @@ import ZSDK_API
                     ^FDHello World^FS
                     ^XZ
                     """
-                    
-                    let zplData = zplString.data(using: .utf8)
-                    var error: NSError?
-                    
-                    try connection.getToolsUtil().send(zplData, withResponse: &error)
-                    
-                    if error == nil {
-                        print("Swift: ZPL data sent successfully.")
-                        success = true
+
+                    var sendError: NSError?
+
+                    if let printerTools = try? printer.getToolsUtil(),
+                       let toolsUtilObj = printerTools as? NSObject {
+                        let sentObj = toolsUtilObj.perform(NSSelectorFromString("sendCommand:error:"), with: zplString, with: nil)
+                        let sent = (sentObj?.takeUnretainedValue() as? Bool) ?? false
+                        if sent {
+                            print("Swift: ZPL data sent successfully.")
+                            success = true
+                        } else {
+                            print("Swift: Error sending ZPL data: \(sendError?.localizedDescription ?? "Unknown error")")
+                        }
                     } else {
-                        print("Swift: Error sending ZPL data: \(error?.localizedDescription ?? "Unknown error")")
+                        print("Swift: ToolsUtil unavailable; cannot send ZPL")
                     }
-                    
+
                     connection.close()
                 } else {
                     print("Swift: Failed to open connection.")
@@ -117,12 +122,12 @@ import ZSDK_API
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  private func getConnection(for address: String) -> ZebraPrinterConnection {
+  private func getConnection(for address: String) -> (NSObject & ZebraPrinterConnection) {
       let isIpAddress = address.split(separator: ".").count == 4
       
       if isIpAddress {
           print("Swift: Creating TCP connection for IP: \(address)")
-          return TcpPrinterConnection(address: address, andWithPortNumber: 6101)
+          return TcpPrinterConnection(address: address, andWithPort: 6101)
       } else {
           print("Swift: Creating Bluetooth connection for name: \(address)")
           let serialNumber = EAAccessoryManager.shared().connectedAccessories.first(where: { $0.name == address })?.serialNumber ?? ""

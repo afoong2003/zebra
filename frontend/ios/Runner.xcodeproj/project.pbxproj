@@ -64,6 +64,27 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CF54F1092EA846040064F4A0 /* DiscoveredPrinter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DiscoveredPrinter.h; sourceTree = "<group>"; };
+		CF54F10A2EA846040064F4A0 /* DiscoveredPrinterNetwork.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DiscoveredPrinterNetwork.h; sourceTree = "<group>"; };
+		CF54F10B2EA846040064F4A0 /* FieldDescriptionData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FieldDescriptionData.h; sourceTree = "<group>"; };
+		CF54F10C2EA846040064F4A0 /* FileUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileUtil.h; sourceTree = "<group>"; };
+		CF54F10D2EA846040064F4A0 /* FormatUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FormatUtil.h; sourceTree = "<group>"; };
+		CF54F10E2EA846040064F4A0 /* GraphicsUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GraphicsUtil.h; sourceTree = "<group>"; };
+		CF54F10F2EA846040064F4A0 /* MagCardReader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MagCardReader.h; sourceTree = "<group>"; };
+		CF54F1102EA846040064F4A0 /* MfiBtPrinterConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MfiBtPrinterConnection.h; sourceTree = "<group>"; };
+		CF54F1112EA846040064F4A0 /* NetworkDiscoverer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NetworkDiscoverer.h; sourceTree = "<group>"; };
+		CF54F1122EA846040064F4A0 /* PrinterStatus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrinterStatus.h; sourceTree = "<group>"; };
+		CF54F1132EA846040064F4A0 /* PrinterStatusMessages.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrinterStatusMessages.h; sourceTree = "<group>"; };
+		CF54F1142EA846040064F4A0 /* ResponseValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ResponseValidator.h; sourceTree = "<group>"; };
+		CF54F1152EA846040064F4A0 /* SGD.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SGD.h; sourceTree = "<group>"; };
+		CF54F1162EA846040064F4A0 /* SmartCardReader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SmartCardReader.h; sourceTree = "<group>"; };
+		CF54F1172EA846040064F4A0 /* TcpPrinterConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TcpPrinterConnection.h; sourceTree = "<group>"; };
+		CF54F1182EA846040064F4A0 /* ToolsUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ToolsUtil.h; sourceTree = "<group>"; };
+		CF54F1192EA846040064F4A0 /* ZebraErrorCode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZebraErrorCode.h; sourceTree = "<group>"; };
+		CF54F11A2EA846040064F4A0 /* ZebraPrinter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZebraPrinter.h; sourceTree = "<group>"; };
+		CF54F11B2EA846040064F4A0 /* ZebraPrinterConnection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZebraPrinterConnection.h; sourceTree = "<group>"; };
+		CF54F11C2EA846040064F4A0 /* ZebraPrinterFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZebraPrinterFactory.h; sourceTree = "<group>"; };
+		CF54F11D2EA846040064F4A0 /* ZplPrintMode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZplPrintMode.h; sourceTree = "<group>"; };
 		CF74207F2EA0543E00DCC11F /* ExternalAccessory.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ExternalAccessory.framework; path = System/Library/Frameworks/ExternalAccessory.framework; sourceTree = SDKROOT; };
 		CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = ZSDK_API.xcframework; path = Frameworks/ZSDK_API.xcframework; sourceTree = "<group>"; };
 		CFA2B7792EA18B300099E547 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
@@ -103,6 +124,7 @@
 		34D3F6FD9E24A49B990FE1A7 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				CF54F11E2EA846040064F4A0 /* Headers */,
 				CFA2B7792EA18B300099E547 /* UIKit.framework */,
 				CF74207F2EA0543E00DCC11F /* ExternalAccessory.framework */,
 				CF88C6E32EA04BB700546E4E /* ZSDK_API.xcframework */,
@@ -166,6 +188,34 @@
 				3B5D878248C17DCC0CA53E8E /* Pods-Runner.profile.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		CF54F11E2EA846040064F4A0 /* Headers */ = {
+			isa = PBXGroup;
+			children = (
+				CF54F1092EA846040064F4A0 /* DiscoveredPrinter.h */,
+				CF54F10A2EA846040064F4A0 /* DiscoveredPrinterNetwork.h */,
+				CF54F10B2EA846040064F4A0 /* FieldDescriptionData.h */,
+				CF54F10C2EA846040064F4A0 /* FileUtil.h */,
+				CF54F10D2EA846040064F4A0 /* FormatUtil.h */,
+				CF54F10E2EA846040064F4A0 /* GraphicsUtil.h */,
+				CF54F10F2EA846040064F4A0 /* MagCardReader.h */,
+				CF54F1102EA846040064F4A0 /* MfiBtPrinterConnection.h */,
+				CF54F1112EA846040064F4A0 /* NetworkDiscoverer.h */,
+				CF54F1122EA846040064F4A0 /* PrinterStatus.h */,
+				CF54F1132EA846040064F4A0 /* PrinterStatusMessages.h */,
+				CF54F1142EA846040064F4A0 /* ResponseValidator.h */,
+				CF54F1152EA846040064F4A0 /* SGD.h */,
+				CF54F1162EA846040064F4A0 /* SmartCardReader.h */,
+				CF54F1172EA846040064F4A0 /* TcpPrinterConnection.h */,
+				CF54F1182EA846040064F4A0 /* ToolsUtil.h */,
+				CF54F1192EA846040064F4A0 /* ZebraErrorCode.h */,
+				CF54F11A2EA846040064F4A0 /* ZebraPrinter.h */,
+				CF54F11B2EA846040064F4A0 /* ZebraPrinterConnection.h */,
+				CF54F11C2EA846040064F4A0 /* ZebraPrinterFactory.h */,
+				CF54F11D2EA846040064F4A0 /* ZplPrintMode.h */,
+			);
+			path = Headers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -456,6 +506,16 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6JF6WLWM57;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_CONFIGURATION_BUILD_DIR}/permission_handler_apple\"",
+					"$(SRCROOT)",
+				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_CONFIGURATION_BUILD_DIR}/permission_handler_apple/permission_handler_apple.framework/Headers\"",
+					"$(SRCROOT)/Headers",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "IPRO APP";
 				IPHONEOS_DEPLOYMENT_TARGET = 13;
@@ -649,6 +709,16 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6JF6WLWM57;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_CONFIGURATION_BUILD_DIR}/permission_handler_apple\"",
+					"$(SRCROOT)",
+				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_CONFIGURATION_BUILD_DIR}/permission_handler_apple/permission_handler_apple.framework/Headers\"",
+					"$(SRCROOT)/Headers",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "IPRO APP";
 				IPHONEOS_DEPLOYMENT_TARGET = 13;
@@ -677,6 +747,16 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 6JF6WLWM57;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_CONFIGURATION_BUILD_DIR}/permission_handler_apple\"",
+					"$(SRCROOT)",
+				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_CONFIGURATION_BUILD_DIR}/permission_handler_apple/permission_handler_apple.framework/Headers\"",
+					"$(SRCROOT)/Headers",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "IPRO APP";
 				IPHONEOS_DEPLOYMENT_TARGET = 13;
