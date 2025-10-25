@@ -51,10 +51,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-
-	<key>UISupportedExternalAccessoryProtocols</key>
-	<array>
-		<string>com.zebra.rawport</string>
-	</array>
 </dict>
 </plist>

@@ -22,16 +22,24 @@ class ConnectedPrinter extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(40), 
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12), 
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withOpacity(0.1),
+              color: Colors.grey[300],
             ),
-            child: Icon(icon, size: 28, color: color),
+            child: Icon(icon, size: 30), // smaller icon
           ),
         ),
-        const SizedBox(height: 8),
-        Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 6), // less vertical space
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w500,
+            fontSize: 12, 
+          ),
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
@@ -54,83 +62,102 @@ class ConnectedPrinter extends StatelessWidget {
       drawer: ConnectedMenu(printerName: printerName),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            // First Container: Printer Image
-            Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+        child: Center( // <-- Add this
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center, // <-- Vertical centering
+            crossAxisAlignment: CrossAxisAlignment.center, // <-- Horizontal centering
+            children: [
+              // First Container: Printer Image
+              Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey,
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
               ),
-             
-            ),
-            const SizedBox(height: 16),
-            
-            const SizedBox(height: 48), 
+              const SizedBox(height: 48), 
 
-            // Second Container: Functionality as a Row of Buttons ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildActionButton(
-                  context: context,
-                  icon: Icons.print,
-                  label: 'Print Actions',
-                  color: Colors.black,
-                  onTap: () {
-                    print('Tapped Print');
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UsePrinter(printerName: printerName),
+              // Second Container: Functionality as a Row of Buttons ---
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 12.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildActionButton(
+                        context: context,
+                        icon: Icons.print,
+                        label: 'Print Actions',
+                        color: Colors.black,
+                        onTap: () {
+                          print('Tapped Print');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UsePrinter(printerName: printerName),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-                _buildActionButton(
-                  context: context,
-                  icon: Icons.upload_file,
-                  label: 'Upload File',
-                  color: Colors.black,
-                  onTap: () {
-                  },
-                ),
-                _buildActionButton(
-                  context: context,
-                  icon: Icons.settings,
-                  label: 'Printer Settings',
-                  color: Colors.black,
-                  onTap: () {
-                  },
-                ),
-                _buildActionButton(
-                  context: context,
-                  icon: Icons.link_off,
-                  label: 'Unpair',
-                  color: Colors.redAccent,
-                  onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MyHomePage(title: 'Printer Setup'),
+                      //const SizedBox(width: 32), 
+                      _buildActionButton(
+                        context: context,
+                        icon: Icons.upload_file,
+                        label: 'Upload File',
+                        color: Colors.black,
+                        onTap: () {},
                       ),
-                    );
-                  },
+                      //const SizedBox(width: 32),
+                      _buildActionButton(
+                        context: context,
+                        icon: Icons.settings,
+                        label: 'Printer Settings',
+                        color: Colors.black,
+                        onTap: () {},
+                      ),
+                      //const SizedBox(width: 32),
+                      _buildActionButton(
+                        context: context,
+                        icon: Icons.link_off,
+                        label: 'Unpair',
+                        color: Colors.black,
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MyHomePage(title: 'Printer Setup'),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

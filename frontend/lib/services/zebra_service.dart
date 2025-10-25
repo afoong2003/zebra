@@ -1,35 +1,66 @@
-import 'package:flutter/services.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'zebra_ble_printer.dart';
 
 class ZebraService {
-  static const MethodChannel _channel = MethodChannel('com.ipro.zebra/printer');
+  // Singleton pattern
+  static final ZebraService _instance = ZebraService._internal();
+  factory ZebraService() => _instance;
+  ZebraService._internal();
 
-  static Future<List<String>> discoverPrinters() async {
-    try {
-      final List<dynamic>? printers = await _channel.invokeMethod('discoverPrinters');
-      return printers?.cast<String>() ?? [];
-    } on PlatformException catch (e) {
-      print("Failed to discover printers: '${e.message}'.");
-      return [];
-    }
+  ZebraBlePrinter? _connectedPrinter;
+
+  // Stream of scan results (ScanResult objects)
+  Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
+
+  // Stream for scanning state
+  Stream<bool> get isScanning => FlutterBluePlus.isScanning;
+
+  // Start scanning for Bluetooth devices
+  Future<void> startScan({Duration? timeout}) async {
+    // Wait for Bluetooth to be enabled
+    await FlutterBluePlus.adapterState.where((val) => val == BluetoothAdapterState.on).first;
+    // Start scan
+    await FlutterBluePlus.startScan(timeout: timeout ?? const Duration(seconds: 15));
   }
 
-  static Future<bool> connectToPrinter(String address) async {
+  // Stop scanning
+  Future<void> stopScan() async {
+    await FlutterBluePlus.stopScan();
+  }
+
+  // Connect to a Zebra printer via BLE
+  Future<bool> connectToPrinter(BluetoothDevice device) async {
     try {
-      final bool? isConnected = await _channel.invokeMethod('connectToPrinter', {'address': address});
-      return isConnected ?? false;
-    } on PlatformException catch (e) {
-      print("Failed to connect: '${e.message}'.");
+      _connectedPrinter = ZebraBlePrinter(device);
+      final success = await _connectedPrinter!.connectAndDiscover();
+      if (!success) {
+        _connectedPrinter = null;
+      }
+      return success;
+    } catch (e) {
+      print("Error connecting to printer: $e");
+      _connectedPrinter = null;
       return false;
     }
   }
 
-  static Future<bool> printTestPage(String address) async {
-    try {
-      final bool? success = await _channel.invokeMethod('printTestPage', {'address': address});
-      return success ?? false;
-    } on PlatformException catch (e) {
-      print("Service: Failed to print test page: '${e.message}'.");
-      return false;
+  // Send ZPL command to connected printer
+  Future<void> printZpl(String zpl) async {
+    if (_connectedPrinter == null) {
+      throw Exception("No printer connected");
     }
+    print("ZebraService: Sending ZPL command...");
+    await _connectedPrinter!.sendCommand(zpl);
+    print("ZebraService: Command sent.");
   }
+
+  // Disconnect from printer
+  Future<void> disconnect() async {
+    await _connectedPrinter?.disconnect();
+    _connectedPrinter = null;
+  }
+
+  bool get isConnected => _connectedPrinter != null;
 }

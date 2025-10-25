@@ -1,9 +1,12 @@
+
+/*
+
 import 'package:flutter/material.dart';
-import 'pages/connected_printer.dart';
 import 'package:frontend/menu/unconnected_menu.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'pages/connected_printer.dart';
 import 'services/zebra_service.dart';
+import 'dart:async';
 
 
 void main() {
@@ -19,9 +22,11 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
-        scaffoldBackgroundColor: const Color(0xFFF5F5F8),
+        scaffoldBackgroundColor: Color(0xFFF5F5F8),
       ),
+  
       home: const MyHomePage(title: 'Printer Setup'),
     );
   }
@@ -37,9 +42,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  // --- State Management ---
-  final ZebraService _zebraService = ZebraService();
   bool _isDiscoveredPrintersExpanded = false;
+  bool _isDiscovering = false; 
+  List<String> _printerNames = []; 
 
   @override
   void initState() {
@@ -49,18 +54,23 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  @override
-  void dispose() {
-    _zebraService.stopScan();
-    super.dispose();
-  }
-
   Future<void> checkAndRequestBluetoothPermission() async {
-    await [
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.locationWhenInUse,
-    ].request();
+    PermissionStatus bluetoothStatus = await Permission.bluetooth.status;
+    PermissionStatus locationStatus = await Permission.locationWhenInUse.status;
+
+    if (!locationStatus.isGranted) {
+      locationStatus = await Permission.locationWhenInUse.request();
+    }
+    
+    if (!bluetoothStatus.isGranted) {
+      bluetoothStatus = await Permission.bluetooth.request();
+    }
+
+    if (bluetoothStatus.isPermanentlyDenied || locationStatus.isPermanentlyDenied) {
+      if (mounted) { 
+        showBluetoothSettingsDialog();
+      }
+    }
   }
 
   void showBluetoothSettingsDialog() {
@@ -91,7 +101,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Text(
                   'Please enable Bluetooth in your device settings to connect to a printer.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black),
+                  style: TextStyle(color: Colors.grey[600]),
                 ),
                 const Spacer(),
                 Row(
@@ -146,11 +156,27 @@ class _MyHomePageState extends State<MyHomePage> {
 
                 Navigator.pop(context);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Manual connection is not implemented yet.'),
-                  ),
-                );
+                //Show a loading indicator here
+
+                final bool isConnected = await ZebraService.connectToPrinter(address);
+
+                if (mounted) { 
+                  if (isConnected) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ConnectedPrinter(printerName: address),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to connect to $address'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
               child: const Text('Connect'),
             ),
@@ -160,15 +186,26 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void _startDiscovery() {
-    _zebraService.startScan();
+  void _discoverAndShowPrinters() async {
+    setState(() {
+      _isDiscovering = true;
+      _printerNames = [];
+    });
+
+    final foundPrinters = await ZebraService.discoverPrinters();
+
+    setState(() {
+      _printerNames = foundPrinters;
+      _isDiscovering = false;
+    });
   }
   
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F8),
+        backgroundColor: Color(0xFFF5F5F8),
         title: Text(widget.title),
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(1.0),
@@ -187,24 +224,25 @@ class _MyHomePageState extends State<MyHomePage> {
               Container(
                 height: 150.0,
                 width: 150.0,
-                margin: const EdgeInsets.only(top: 15.0, bottom: 20.0),
-                decoration: const BoxDecoration(
+                margin: EdgeInsets.only(top: 15.0, bottom: 20.0),
+                decoration: BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/images/Alertcircle.png'),
                     fit: BoxFit.cover,
                   ),
-                  borderRadius: BorderRadius.all(Radius.circular(25.0)),
+                  borderRadius: BorderRadius.circular(25.0),
                   color: Color(0xFFF5F5F8)
                 ),
               ),
-              Container(
+                Container(
                 height: 50.0,
                 width: 150.0,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25.0),
                   color: Colors.white
                 ),
-                child: const Center(
+                child: FittedBox(
+                  fit: BoxFit.none,
                   child: Text(
                     'Not Connected',
                     style: TextStyle(
@@ -257,8 +295,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     mainAxisSize: MainAxisSize.min, 
                     children: [
                       InkWell(
-                        highlightColor: Colors.transparent,
-                        splashColor: Colors.grey.withOpacity(0.2),
                         borderRadius: _isDiscoveredPrintersExpanded
                             ? const BorderRadius.vertical(top: Radius.circular(25.0))
                             : BorderRadius.circular(25.0),
@@ -269,9 +305,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           });
 
                           if (isOpening) {
-                            _startDiscovery();
-                          } else {
-                            _zebraService.stopScan();
+                            _discoverAndShowPrinters();
                           }
                         },
                         child: Container(
@@ -292,7 +326,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   if (_isDiscoveredPrintersExpanded)
                                     IconButton(
                                       icon: Icon(Icons.refresh, color: Colors.black),
-                                      onPressed: _startDiscovery,
+                                      onPressed: _discoverAndShowPrinters,
                                     ),
                                   Icon(
                                     _isDiscoveredPrintersExpanded
@@ -312,46 +346,23 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: Column(
                             children: [
                               const Divider(indent: 10, endIndent: 10, color: Colors.black),
-                              StreamBuilder<List<ScanResult>>(
-                                stream: _zebraService.scanResults,
-                                initialData: const [],
-                                builder: (c, snapshot) => StreamBuilder<bool>(
-                                  stream: _zebraService.isScanning,
-                                  initialData: false,
-                                  builder: (c, isScanningSnapshot) {
-                                    final isScanning = isScanningSnapshot.data ?? false;
-                                    final results = snapshot.data ?? [];
-
-                                    // Filter for Zebra printers by Manufacturer ID
-                                    final zebraResults = results;
-                                    /*.where((r) {
-                                      final manufacturerData = r.advertisementData.manufacturerData;
-                                      return manufacturerData.containsKey(0x01F1);
-                                    }).toList();
-                                    */
-                                    if (isScanning && zebraResults.isEmpty) {
-                                      return const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 16.0),
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    } else if (!isScanning && zebraResults.isEmpty) {
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                        child: Text(
-                                          'No printers found.',
-                                          style: TextStyle(color: Colors.black),
-                                        ),
-                                      );
-                                    } else {
-                                      return Column(
-                                        children: zebraResults.map((result) {
-                                          return _buildPrinterTile(result);
-                                        }).toList(),
-                                      );
-                                    }
-                                  },
-                                ),
-                              ),
+                              if (_isDiscovering)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                                  child: CircularProgressIndicator(),
+                                )
+                              else if (_printerNames.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Text(
+                                    'No printers found.',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                )
+                              else
+                                ..._printerNames.map((name) {
+                                  return _buildPrinterTile(name);
+                                }).toList(),
                             ],
                           ),
                         ),
@@ -407,6 +418,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                       ),
                     ),
+
                     Container(
                       margin: EdgeInsets.only(top: 15.0),
                       height: 100.0,
@@ -431,56 +443,24 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // --- Updated to use new ZebraService BLE connection and print ---
-  Widget _buildPrinterTile(ScanResult result) {
-    final device = result.device;
+  Widget _buildPrinterTile(String printerName) {
     return ListTile(
-      leading: Icon(Icons.bluetooth, color: Colors.blue[600]),
+      leading: Icon(Icons.print, color: Colors.grey[600]),
       title: Text(
-        device.platformName.isNotEmpty ? device.platformName : 'Unknown Device',
-        style: const TextStyle(
+        printerName,
+        style: TextStyle(
           color: Colors.black,
           fontWeight: FontWeight.w500,
         ),
       ),
-      subtitle: Text(device.remoteId.str),
-      onTap: () async {
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.showSnackBar(
-          SnackBar(content: Text('Connecting to ${device.platformName}...')),
+      onTap: () {
+        print('Tapped on $printerName');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConnectedPrinter(printerName: printerName),
+          ),
         );
-        try {
-          // Connect using the new BLE printer class
-          final success = await _zebraService.connectToPrinter(device);
-          if (success) {
-            messenger.hideCurrentSnackBar();
-            messenger.showSnackBar(
-              const SnackBar(
-                  content: Text('Connected successfully!'),
-                  backgroundColor: Colors.green),
-            );
-            // Navigate to ConnectedPrinter page
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ConnectedPrinter(
-                  printerName: device.platformName.isNotEmpty 
-                      ? device.platformName 
-                      : 'Unknown Printer',
-                ),
-              ),
-            );
-          } else {
-            throw Exception("Connection failed");
-          }
-        } catch (e) {
-          messenger.hideCurrentSnackBar();
-          messenger.showSnackBar(
-            SnackBar(
-                content: Text('Error: ${e.toString()}'),
-                backgroundColor: Colors.red),
-          );
-        }
       },
     );
   }
@@ -490,3 +470,4 @@ class _MyHomePageState extends State<MyHomePage> {
 
 
 
+*/
