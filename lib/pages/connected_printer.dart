@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/menu/connected_menu.dart';
+import '../menu/connected_menu.dart';
 import '../main.dart';
 import 'use_printer.dart'; 
 import '../services/zebra_service.dart';
+import '../services/fetch_data.dart';
+import 'printer_settings.dart';
+import 'upload_file.dart';
 
 
 class ConnectedPrinter extends StatefulWidget {
@@ -16,6 +19,7 @@ class ConnectedPrinter extends StatefulWidget {
 
 class _ConnectedPrinterState extends State<ConnectedPrinter> {
   String? _modelName;
+  String? _printerImageUrl;
   bool _loadingModel = true;
 
   @override
@@ -25,9 +29,18 @@ class _ConnectedPrinterState extends State<ConnectedPrinter> {
   }
 
   Future<void> _fetchModelName() async {
+    // Get model name from ZebraService (e.g., "ZD421")
     final model = await ZebraService().getModelName();
+    
+    // Use the model name or fallback to printerName from widget
+    final searchName = model ?? widget.printerName;
+    
+    // Fetch from Supabase using the fetch_data service
+    final result = await fetchModelName(searchName);
+    
     setState(() {
-      _modelName = model;
+      _modelName = result['name'] ?? model;
+      _printerImageUrl = result['image_url'];
       _loadingModel = false;
     });
   }
@@ -39,32 +52,40 @@ class _ConnectedPrinterState extends State<ConnectedPrinter> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(40), 
-          child: Container(
-            padding: const EdgeInsets.all(12), 
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey[300],
+    return SizedBox(
+      width: 85, 
+      height: 85, 
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(40),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+              ),
+              child: Icon(icon, size: 25),
             ),
-            child: Icon(icon, size: 30), 
           ),
-        ),
-        const SizedBox(height: 6), // less vertical space
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w500,
-            fontSize: 12, 
+          const SizedBox(height: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -73,6 +94,7 @@ class _ConnectedPrinterState extends State<ConnectedPrinter> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F8),
       appBar: AppBar(
+        scrolledUnderElevation: 0.0,
         backgroundColor: const Color(0xFFF5F5F8),
         title: _loadingModel
             ? Text(widget.printerName)
@@ -104,11 +126,22 @@ class _ConnectedPrinterState extends State<ConnectedPrinter> {
                     BoxShadow(
                       color: Colors.grey,
                       spreadRadius: 2,
-                      blurRadius: 5,
+                      blurRadius: 4,
                       offset: const Offset(0, 3),
                     ),
                   ],
                 ),
+                child: _printerImageUrl != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          _printerImageUrl!,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                        ),
+                      )
+                    : const Center(child: Icon(Icons.image, size: 48, color: Colors.grey)),
               ),
               const SizedBox(height: 48), 
 
@@ -153,7 +186,14 @@ class _ConnectedPrinterState extends State<ConnectedPrinter> {
                         icon: Icons.upload_file,
                         label: 'Upload File',
                         color: Colors.black,
-                        onTap: () {},
+                        onTap: () {
+                           Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UploadFile(),
+                            ),
+                          );
+                        },
                       ),
                       //const SizedBox(width: 32),
                       _buildActionButton(
@@ -161,7 +201,16 @@ class _ConnectedPrinterState extends State<ConnectedPrinter> {
                         icon: Icons.settings,
                         label: 'Printer Settings',
                         color: Colors.black,
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PrinterSettings(),
+                            ),
+                          );
+
+
+                        },
                       ),
                       //const SizedBox(width: 32),
                       _buildActionButton(

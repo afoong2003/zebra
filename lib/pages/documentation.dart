@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../printers/desktop.dart';
 import '../printers/industrial.dart';
 import '../printers/mobile.dart';
 import '../printers/card.dart';
 import '../printers/print_engines.dart';
 import '../printers/healthcare.dart';
+import '../services/fetch_data.dart';
 
 
 class DocumentationPage extends StatefulWidget {
@@ -33,22 +33,13 @@ class _DocumentationPageState extends State<DocumentationPage> {
     _categoriesFuture = getCategories();
   }
 
-  Future<List<Map<String, dynamic>>> getCategories() async {
-    try {
-      final List<Map<String, dynamic>> data = await Supabase.instance.client
-          .from('categories')
-          .select();
-      return data;
-    } catch (error) {
-      print('Error fetching categories: $error');
-      return [];
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0.0,
         title: const Text('Documentation'),
         backgroundColor: const Color(0xFFF5F5F8),
         bottom: PreferredSize(
@@ -65,7 +56,7 @@ class _DocumentationPageState extends State<DocumentationPage> {
           future: _categoriesFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: Colors.black));
             }
             final dbCategories = snapshot.data ?? [];
             // Map category name to image_url for quick lookup
@@ -77,7 +68,7 @@ class _DocumentationPageState extends State<DocumentationPage> {
 
             return Column(
               children: [
-                const SizedBox(height: 55),
+                //const SizedBox(height: 55),
                 Expanded(
                   child: GridView.count(
                     crossAxisCount: 2,
@@ -89,6 +80,8 @@ class _DocumentationPageState extends State<DocumentationPage> {
                           'https://via.placeholder.com/80?text=$label';
                       return InkWell(
                         borderRadius: BorderRadius.circular(12),
+                        
+                        
                         onTap: () {
                           Navigator.push(
                             context,

@@ -1,15 +1,17 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'zebra_ble_printer.dart';
+import 'printer_settings_helper.dart';
 
 class ZebraService {
-  // Singleton pattern
   static final ZebraService _instance = ZebraService._internal();
   factory ZebraService() => _instance;
   ZebraService._internal();
 
   ZebraBlePrinter? _connectedPrinter;
+  String? _cachedModelName; 
+
+  // Public getter
+  ZebraBlePrinter? get connectedPrinter => _connectedPrinter;
 
   // Stream of scan results (ScanResult objects)
   Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
@@ -37,16 +39,24 @@ class ZebraService {
       final success = await _connectedPrinter!.connectAndDiscover();
       if (!success) {
         _connectedPrinter = null;
+        _cachedModelName = null;
+        return false;
       }
-      return success;
+      
+      // Immediately fetch and cache the model name after successful connection
+      print('Fetching and caching model name...');
+      _cachedModelName = await _fetchModelNameFromPrinter();
+      print('Cached model name: $_cachedModelName');
+      
+      return true;
     } catch (e) {
       print("Error connecting to printer: $e");
       _connectedPrinter = null;
+      _cachedModelName = null;
       return false;
     }
   }
 
-  // Send ZPL command to connected printer
   Future<void> printZpl(String zpl) async {
     if (_connectedPrinter == null) {
       throw Exception("No printer connected");
@@ -56,29 +66,54 @@ class ZebraService {
     print("ZebraService: Command sent.");
   }
 
-  // Disconnect from printer
   Future<void> disconnect() async {
     await _connectedPrinter?.disconnect();
     _connectedPrinter = null;
+    _cachedModelName = null;
+    
+    // Reset printer settings cache when disconnecting
+    PrinterSettingsHelper().resetCachedKeys();
+    print('Cleared all printer caches on disconnect');
   }
 
   bool get isConnected => _connectedPrinter != null;
 
-  Future<String?> getModelName() async {
+  // Private method to fetch model name from printer
+  Future<String?> _fetchModelNameFromPrinter() async {
     if (_connectedPrinter == null) return null;
     try {
-      final response = await _connectedPrinter!.sendCommandAndGetResponse('! U1 getvar "device.product_name"\r\n');
-      if (response != null && response.isNotEmpty) {
+      var response = await _connectedPrinter!.sendCommandAndGetResponse('! U1 getvar "device.product_name"\r\n');
+      
+
+      
+      if (response != null && response.isNotEmpty && response != '?') {
         String model = response.trim();
-        // Remove surrounding quotes if present
         if (model.startsWith('"') && model.endsWith('"') && model.length > 1) {
           model = model.substring(1, model.length - 1);
         }
+        
+        if (model.contains(' ')) {
+          model = model.split(' ').first;
+        }
+        
         return model;
       }
     } catch (e) {
-      print("Error getting model name: $e");
+      print("Error fetching model name from printer: $e");
     }
     return null;
+  }
+
+  // Public method to get model name (returns cached value if available)
+  Future<String?> getModelName() async {
+    // Return cached value if available
+    if (_cachedModelName != null) {
+      print('Using cached model name: $_cachedModelName');
+      return _cachedModelName;
+    }
+    
+    print('Model name not cached, fetching...');
+    _cachedModelName = await _fetchModelNameFromPrinter();
+    return _cachedModelName;
   }
 }

@@ -6,6 +6,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'services/zebra_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';  
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/printer_settings_helper.dart';
 
 Future<void> main() async {  
   WidgetsFlutterBinding.ensureInitialized();  
@@ -177,6 +178,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0.0,
         backgroundColor: const Color(0xFFF5F5F8),
         title: Text(widget.title),
         bottom: PreferredSize(
@@ -267,7 +269,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     children: [
                       InkWell(
                         highlightColor: Colors.transparent,
-                        splashColor: Colors.grey.withOpacity(0.2),
+                        splashColor: Colors.transparent,
+                        hoverColor: Colors.transparent,
                         borderRadius: _isDiscoveredPrintersExpanded
                             ? const BorderRadius.vertical(top: Radius.circular(25.0))
                             : BorderRadius.circular(25.0),
@@ -341,21 +344,18 @@ class _MyHomePageState extends State<MyHomePage> {
                                       }
                                     }
 
-                                    // Filter for Zebra printers by Company Identifier only
+                                    // Filter for Zebra printers by Service UUID 
                                     final zebraResults = results.where((r) {
-                                      final manufacturerData = r.advertisementData.manufacturerData;
+                                      //final manufacturerData = r.advertisementData.manufacturerData;
                                       final serviceUuids = r.advertisementData.serviceUuids
                                           .map((u) => u.toString().toUpperCase())
                                           .toList();
 
-                                      final hasZebraCompanyId = manufacturerData.containsKey(0x01F1);
                                       final hasZebraServiceUuid = serviceUuids.any((uuid) =>
-                                        uuid.contains('FE79') ||
-                                        uuid.contains('FD66') ||
-                                        uuid.contains('38EB4A80')
+                                        uuid.contains('FE79') 
                                       );
 
-                                      return hasZebraCompanyId || hasZebraServiceUuid;
+                                      return hasZebraServiceUuid;
                                     }).toList();
 
                                     print("Zebra devices found: ${zebraResults.length}");
@@ -363,15 +363,33 @@ class _MyHomePageState extends State<MyHomePage> {
                                     if (isScanning && zebraResults.isEmpty) {
                                       return const Padding(
                                         padding: EdgeInsets.symmetric(vertical: 16.0),
-                                        child: CircularProgressIndicator(),
+                                        child: CircularProgressIndicator(color: Colors.black),
                                       );
                                     } else if (!isScanning && zebraResults.isEmpty) {
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                        child: Text(
-                                          'No Zebra printers found.',
-                                          style: TextStyle(color: Colors.black),
-                                        ),
+                                      return Column(
+                                        children: [
+                                          ListTile(
+                                            leading: Icon(Icons.bluetooth, color: Colors.blue[600]),
+                                            title: const Text(
+                                              'ZD421',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => ConnectedPrinter(
+                                                    printerName: 'ZD421',
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                         
+                                        ],
                                       );
                                     } else {
                                       return Column(
@@ -433,7 +451,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       child: Center(
                         child: Text(
-                          '2. Use Limited Pairing Mode if bluetooth connection has issues. Hold the printer feed button until the LED begins flashing.',
+                          ' 2. Use Limited Pairing Mode if bluetooth connection has issues. Hold the printer feed button until the LED begins flashing.',
                           style: TextStyle(color: Colors.black),
                         ),
                       ),
@@ -462,7 +480,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // --- Updated to use new ZebraService BLE connection and print ---
   Widget _buildPrinterTile(ScanResult result) {
     final device = result.device;
     return ListTile(
@@ -475,47 +492,80 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       subtitle: Text(device.remoteId.str),
+      splashColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      focusColor: Colors.transparent,
+      
       onTap: () async {
+        await _zebraService.stopScan();
+
         final messenger = ScaffoldMessenger.of(context);
 
-        // Show loading dialog
+        // Show loading dialog with detailed status
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
+          builder: (context) => const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.black),
+                SizedBox(height: 16),
+                Text('Connecting to printer...'),
+                SizedBox(height: 8),
+                Text(
+                  'This may take a few seconds',
+                  style: TextStyle(fontSize: 12, color: Colors.black),
+                ),
+              ],
+            ),
+          ),
         );
 
         try {
+          print('Connecting to printer');
           final success = await _zebraService.connectToPrinter(device);
-          String? modelName;
-          if (success) {
-            modelName = await _zebraService.getModelName();
-            await _zebraService.stopScan(); // <-- Stop scanning here!
-          }
-          Navigator.of(context).pop(); // Dismiss loading dialog
-
-          if (success) {
-            messenger.showSnackBar(
-              const SnackBar(
-                content: Text('Connected successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ConnectedPrinter(
-                  printerName: modelName ?? (device.platformName.isNotEmpty
-                      ? device.platformName
-                      : 'Unknown Printer'),
-                ),
-              ),
-            );
-          } else {
+          
+          if (!success) {
             throw Exception("Connection failed");
           }
+
+          print('Getting model name');
+          final modelName = await _zebraService.getModelName();
+
+          print('Preloading printer settings');
+          final settingsHelper = PrinterSettingsHelper();
+          await settingsHelper.fetchAllSettings();
+          print('Settings preloaded successfully!');
+
+        
+
+          // Dismiss loading dialog
+          Navigator.of(context).pop();
+
+          // Show success message
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Connected and ready!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+
+          // Navigate to connected printer page
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ConnectedPrinter(
+                printerName: modelName ?? (device.platformName.isNotEmpty
+                    ? device.platformName
+                    : 'Unknown Printer'),
+              ),
+            ),
+          );
         } catch (e) {
-          Navigator.of(context).pop(); // Dismiss loading dialog if error
+          print('Error during connection: $e');
+          Navigator.of(context).pop(); // Dismiss loading dialog
           messenger.showSnackBar(
             SnackBar(
               content: Text('Error: ${e.toString()}'),
