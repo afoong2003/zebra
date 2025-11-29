@@ -38,6 +38,8 @@ dependencies:
   flutter_dotenv: ^6.0.0
   syncfusion_flutter_pdfviewer: ^31.2.5
   file_picker: ^10.3.3
+  shared_preferences: ^2.5.3
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

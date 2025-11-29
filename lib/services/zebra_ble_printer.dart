@@ -37,14 +37,14 @@ class ZebraBlePrinter {
       } catch (e) {
         print("MTU negotiation failed, using default: $e");
       }
-
+/*
       try {
         await device.requestConnectionPriority(connectionPriorityRequest: ConnectionPriority.high);
         print("Connection priority set to HIGH");
       } catch (e) {
         print("Failed to set connection priority: $e");
       }
-
+*/
       List<BluetoothService> services = await device.discoverServices();
       print("Discovering services...");
 
@@ -144,6 +144,7 @@ class ZebraBlePrinter {
           }
 
         } catch (e) {
+          /*
           retryCount++;
           final isBufferError = e.toString().contains('Resources are insufficient') || 
                                e.toString().contains('apple-code: 17') ||
@@ -160,9 +161,13 @@ class ZebraBlePrinter {
             if (!_writeCompleter!.isCompleted) _writeCompleter!.completeError(e);
             rethrow;
           }
+          */
+           
+          //print("error");
+          
         }
       }
-
+/*
       if (!chunkSent) {
         final error = "Failed to send chunk $_chunksSent after $maxRetries attempts";
         print("$error");
@@ -171,9 +176,11 @@ class ZebraBlePrinter {
       }
     }
 
+*/
     print(" All chunks sent successfully.");
     if (!_writeCompleter!.isCompleted) _writeCompleter!.complete();
   }
+}
 
   Future<void> setupReadNotifications(BluetoothCharacteristic characteristic) async {
     if (characteristic.properties.notify || characteristic.properties.indicate) {

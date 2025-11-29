@@ -1,7 +1,8 @@
 import '../services/zebra_service.dart';
 
 class PrinterSettingsHelper {
-  static final PrinterSettingsHelper _instance = PrinterSettingsHelper._internal();
+  static final PrinterSettingsHelper _instance =
+      PrinterSettingsHelper._internal();
   factory PrinterSettingsHelper() => _instance;
   PrinterSettingsHelper._internal();
 
@@ -16,9 +17,8 @@ class PrinterSettingsHelper {
   Map<String, String?>? _cachedSettings;
   bool _settingsCached = false;
 
-  // Add static cache for print methods
-  static bool _printMethodsCached = false;
-  static List<String> _cachedPrintMethods = [];
+  bool _printMethodsCached = false;
+  List<String> _cachedPrintMethods = [];
 
   // Get SGD value from the printer
   Future<String?> getSgdValue(String key) async {
@@ -26,26 +26,27 @@ class PrinterSettingsHelper {
       if (!_zebraService.isConnected) {
         throw Exception("Printer not connected");
       }
-      
+
       final command = '! U1 getvar "$key"\r\n';
       print('Sending SGD command: $command');
-      final response = await _zebraService.connectedPrinter?.sendCommandAndGetResponse(command);
-      
+      final response = await _zebraService.connectedPrinter
+          ?.sendCommandAndGetResponse(command);
+
       if (response != null && response.isNotEmpty) {
         String value = response.trim();
         print('Raw SGD response for $key: "$value"');
-        
+
         // Remove quotes if present
         if (value.startsWith('"') && value.endsWith('"') && value.length > 1) {
           value = value.substring(1, value.length - 1);
         }
-        
+
         // Check if it's an error response
         if (value.toLowerCase().contains('error') || value == '?') {
           print('Error response for $key: $value');
           return null;
         }
-        
+
         print('getSgdValue($key): $value');
         return value;
       } else {
@@ -64,7 +65,7 @@ class PrinterSettingsHelper {
       if (!_zebraService.isConnected) {
         throw Exception("Printer not connected");
       }
-      
+
       // If we're setting darkness/speed/printMethod, use the cached working key if available
       String actualKey = key;
       if (key == 'print.tone' && _workingDarknessKey != null) {
@@ -77,19 +78,28 @@ class PrinterSettingsHelper {
         actualKey = _workingPrintMethodKey!;
         print('Using cached print method key: $actualKey');
       }
-      
+
       final command = '! U1 setvar "$actualKey" "$value"\r\n';
       print('Setting SGD value: $actualKey = $value');
       await _zebraService.connectedPrinter?.sendCommand(command);
-      
+
       // Small delay to ensure command is processed
       await Future.delayed(const Duration(milliseconds: 50));
-      
+
       print('setSgdValue($actualKey): $value completed');
     } catch (e) {
       print('Error setting SGD value for $key: $e');
       rethrow;
     }
+  }
+
+  List<String>? getCachedPrintMethods() {
+    if (_printMethodsCached && _cachedPrintMethods.isNotEmpty) {
+      print('Returning cached print methods: $_cachedPrintMethods');
+      return List<String>.from(_cachedPrintMethods);
+    }
+    print('No cached print methods available');
+    return null;
   }
 
   // Check which print methods are supported by the printer
@@ -99,198 +109,176 @@ class PrinterSettingsHelper {
       print('Using cached print methods: $_cachedPrintMethods');
       return List<String>.from(_cachedPrintMethods);
     }
-    
+
     print('Detecting supported print methods');
-    
-    // Try to get current print method
-    final currentMethod = await getSgdValue('ezpl.print_method');
-    
-    if (currentMethod != null) {
-      final normalized = currentMethod.toLowerCase().trim();
-      print('Current print method: $normalized');
-      
-      // If we can read the value, the printer supports print method setting
-      // Try setting it to both values to see what's accepted
-      final List<String> supported = [];
-      
-      // Test direct thermal
-      try {
-        await setSgdValue('ezpl.print_method', 'direct thermal');
-        await Future.delayed(const Duration(milliseconds: 100));
-        final verifyDirect = await getSgdValue('ezpl.print_method');
-        if (verifyDirect?.toLowerCase().contains('direct') ?? false) {
-          supported.add('Direct Thermal');
-          print('Direct Thermal is supported');
-        }
-      } catch (e) {
-        print(' Direct Thermal test failed: $e');
+
+    final List<String> supported = [];
+    String? originalMethod;
+
+    try {
+      originalMethod = await getSgdValue('ezpl.print_method');
+      print('Current print method: $originalMethod');
+    } catch (e) {
+      print('Could not get current print method: $e');
+    }
+
+    // Test direct thermal
+    try {
+      await setSgdValue('ezpl.print_method', 'direct thermal');
+      await Future.delayed(const Duration(milliseconds: 100));
+      final verifyDirect = await getSgdValue('ezpl.print_method');
+      if (verifyDirect?.toLowerCase().contains('direct') ?? false) {
+        supported.add('Direct Thermal');
+        print('Direct Thermal is supported');
       }
-      
-      // Test thermal transfer
-      try {
-        await setSgdValue('ezpl.print_method', 'thermal trans');
-        await Future.delayed(const Duration(milliseconds: 100));
-        final verifyTransfer = await getSgdValue('ezpl.print_method');
-        if (verifyTransfer?.toLowerCase().contains('thermal trans') ?? false) {
-          supported.add('Thermal Transfer');
-          print(' Thermal Transfer is supported');
-        }
-      } catch (e) {
-        print('Thermal Transfer test failed: $e');
+    } catch (e) {
+      print('Direct Thermal test failed: $e');
+    }
+
+    // Test thermal transfer
+    try {
+      await setSgdValue('ezpl.print_method', 'thermal trans');
+      await Future.delayed(const Duration(milliseconds: 100));
+      final verifyTransfer = await getSgdValue('ezpl.print_method');
+      if (verifyTransfer?.toLowerCase().contains('thermal trans') ?? false) {
+        supported.add('Thermal Transfer');
+        print('Thermal Transfer is supported');
       }
-      
-      // Restore original method
-      await setSgdValue('ezpl.print_method', normalized);
-      
-      if (supported.isNotEmpty) {
-        _workingPrintMethodKey = 'ezpl.print_method';
-        print('Supported print methods: $supported');
-        // At the end, before returning, cache the results:
-        _cachedPrintMethods = supported;
-        _printMethodsCached = true;
-        print('Cached print methods for future use');
-        return supported;
+    } catch (e) {
+      print('Thermal Transfer test failed: $e');
+    }
+
+    if (originalMethod != null) {
+      try {
+        await setSgdValue('ezpl.print_method', originalMethod);
+        print('Restored original print method: $originalMethod');
+      } catch (e) {
+        print('Could not restore original method: $e');
       }
     }
-    
-    // Fallback: check device.head_type to determine capabilities
-    final headType = await getSgdValue('device.head_type');
-    if (headType != null) {
-      final type = headType.toLowerCase();
-      print('Head type: $type');
-      
-      if (type.contains('direct') && !type.contains('thermal transfer')) {
-        print('Printer only supports Direct Thermal');
-        return ['Direct Thermal'];
-      } else if (type.contains('thermal transfer') || type.contains('tt')) {
-        print('Printer supports both methods');
-        return ['Direct Thermal', 'Thermal Transfer'];
-      }
+
+    if (supported.isNotEmpty) {
+      _workingPrintMethodKey = 'ezpl.print_method';
+      print('Supported print methods: $supported');
+      _cachedPrintMethods = supported;
+      _printMethodsCached = true;
+      print('Cached print methods for future use');
+      return supported;
     }
-    
-    // Default fallback
+    /*
     print('Could not detect print methods, defaulting to Direct Thermal only');
-    return ['Direct Thermal'];
+    final defaultMethods = ['Direct Thermal'];
+    _cachedPrintMethods = defaultMethods;
+    _printMethodsCached = true;
+    return defaultMethods;
+    */
+    return supported;
   }
 
-  Future<Map<String, String?>> fetchAllSettings({bool forceRefresh = false}) async {
+  Future<Map<String, String?>> fetchAllSettings({
+    bool forceRefresh = false,
+  }) async {
     // Return cached settings if available and not forcing refresh
     if (_settingsCached && _cachedSettings != null && !forceRefresh) {
-      print('Using cached printer settings (including label dimensions)');
+      print('Using cached printer settings');
       return Map<String, String?>.from(_cachedSettings!);
     }
 
     try {
-      final darknessKeys = ['print.tone'];
-      final speedKeys = ['media.speed'];
-      final printMethodKeys = ['ezpl.print_method'];
-      
       String? darkness;
       String? speed;
       String? printMethod;
       String? mediaType;
-      String? labelWidth;   
-      String? labelHeight;  
-      
-      print('Fetching settings sequentially...');
-      
-      // Fetch darkness
-      darkness = await getSgdValue(darknessKeys[0]);
-      if (darkness == null || darkness.isEmpty || darkness == 'Unknown') {
-        print('Primary darkness key failed, trying alternatives...');
-        for (int i = 1; i < darknessKeys.length; i++) {
-          darkness = await getSgdValue(darknessKeys[i]);
-          if (darkness != null && darkness.isNotEmpty && darkness != 'Unknown') {
-            _workingDarknessKey = darknessKeys[i];
-            print('Found darkness at alternative key: ${darknessKeys[i]} = $darkness');
-            break;
-          }
-        }
-      } else {
-        _workingDarknessKey = darknessKeys[0];
-        print('Found darkness at primary key: ${darknessKeys[0]} = $darkness');
-      }
-      
-      // Fetch speed
-      speed = await getSgdValue(speedKeys[0]);
-      if (speed == null || speed.isEmpty || speed == 'Unknown') {
-        print('Primary speed key failed, trying alternatives...');
-        for (int i = 1; i < speedKeys.length; i++) {
-          speed = await getSgdValue(speedKeys[i]);
-          if (speed != null && speed.isNotEmpty && speed != 'Unknown') {
-            _workingSpeedKey = speedKeys[i];
-            print('Found speed at alternative key: ${speedKeys[i]} = $speed');
-            break;
-          }
-        }
-      } else {
-        _workingSpeedKey = speedKeys[0];
-        print('Found speed at primary key: ${speedKeys[0]} = $speed');
-      }
-      
-      // Fetch print method - try ezpl.print_method first (correct key)
-      printMethod = await getSgdValue(printMethodKeys[0]);
-      if (printMethod == null || printMethod.isEmpty || printMethod == 'Unknown') {
-        print('Primary print method key failed, trying alternatives...');
-        for (int i = 1; i < printMethodKeys.length; i++) {
-          printMethod = await getSgdValue(printMethodKeys[i]);
-          if (printMethod != null && printMethod.isNotEmpty && printMethod != 'Unknown') {
-            _workingPrintMethodKey = printMethodKeys[i];
-            print('Found print method at alternative key: ${printMethodKeys[i]} = $printMethod');
-            break;
-          }
-        }
-      } else {
-        _workingPrintMethodKey = printMethodKeys[0];
-        print('Found print method at primary key: ${printMethodKeys[0]} = $printMethod');
-      }
-      
-      // Fetch media type 
-      mediaType = await getSgdValue('ezpl.media_type');
-      
-      /*
-      if (mediaType == null || mediaType.isEmpty || mediaType == 'Unknown') {
-        print('ezpl.media_type not found, trying legacy media.type key...');
-        final legacyType = await getSgdValue('media.type');
-        
-        if (legacyType != null) {
-          final normalized = legacyType.toLowerCase().trim();
-          // Map legacy values to EZPL standard
-          if (normalized == 'journal' || normalized == 'web') {
-            mediaType = 'continuous';
-            print('📋 Normalized legacy media type "$normalized" to "continuous"');
-          } else if (normalized == 'gap') {
-            mediaType = 'gap/notch';
-            print('📋 Normalized media type "gap" to "gap/notch"');
-          } else if (normalized == 'cutter') {
-            mediaType = 'gap/notch'; // Cutter mode typically uses gap detection
-            print('📋 Normalized media type "cutter" to "gap/notch"');
-          } else if (normalized == 'auto_detect' || normalized == 'auto detect') {
-            mediaType = 'auto_detect';
-            print('📋 Media type set to auto_detect');
-          }
-        }
-      }
-      */
-      // Fetch label dimensions
-      print('Fetching label dimensions');
-      labelWidth = await getSgdValue('ezpl.print_width');
-      labelHeight = await getSgdValue('zpl.label_length');
-      
-      // Set defaults if still null
-      _workingDarknessKey ??= darknessKeys.first;
-      _workingSpeedKey ??= speedKeys.first;
-      _workingPrintMethodKey ??= printMethodKeys.first;
+      String? labelWidthInches;
+      String? labelWidthDots;
+      String? labelHeight;
+      String? labelOrientation;
+      String? dpi;
 
-      // Cache the settings 
-      print('Caching printer settings (including label dimensions) for fast access');
+      print('Fetching settings sequentially...');
+
+      // Fetch darkness
+      darkness = await getSgdValue('print.tone');
+      if (darkness != null) {
+        _workingDarknessKey = 'print.tone';
+      }
+
+      print("Fetching label orientation");
+      labelOrientation = await getSgdValue('zpl.label_orientation');
+
+      // Fetch speed
+      speed = await getSgdValue('media.speed');
+      if (speed != null) {
+        _workingSpeedKey = 'media.speed';
+      }
+
+      // Fetch print method
+      printMethod = await getSgdValue('ezpl.print_method');
+      if (printMethod != null) {
+        _workingPrintMethodKey = 'ezpl.print_method';
+      }
+
+      // Fetch media type
+      mediaType = await getSgdValue('ezpl.media_type');
+
+      print('Fetching printer DPI');
+      dpi = await getSgdValue('head.resolution.in_dpi');
+      if (dpi != null && dpi.isNotEmpty) {
+        print('Found DPI: $dpi');
+      } else {
+        print('DPI not found, using default 203');
+        dpi = '203';
+      }
+      final printerDpi = int.tryParse(dpi) ?? 203;
+
+      print('Fetching label dimensions');
+
+      // Width - Try ezpl.print_width first (returns DOTS, not inches!)
+      labelWidthDots = await getSgdValue('ezpl.print_width');
+      if (labelWidthDots != null &&
+          labelWidthDots.isNotEmpty &&
+          labelWidthDots != '?') {
+        print('Raw label width: $labelWidthDots dots');
+
+        // Convert dots to inches for storage
+        final widthDots = int.tryParse(labelWidthDots) ?? 1200;
+        final widthInches = widthDots / printerDpi;
+        labelWidthInches = widthInches.toStringAsFixed(2);
+
+        print(
+          'Converted label width: $labelWidthDots dots = $labelWidthInches" (at $printerDpi DPI)',
+        );
+      } else {
+        print('Label width not found, using defaults');
+        labelWidthDots = '1200'; // Default dots
+        labelWidthInches = (1200 / printerDpi).toStringAsFixed(
+          2,
+        ); // Calculate inches
+        print('Default label width: $labelWidthDots dots = $labelWidthInches"');
+      }
+
+      // Height - zpl.label_length returns DOTS
+      labelHeight = await getSgdValue('zpl.label_length');
+      if (labelHeight == null || labelHeight.isEmpty || labelHeight == '?') {
+        print('Label height not found, using default 1800 dots');
+        labelHeight = '1800';
+      } else {
+        print('Raw label height: $labelHeight dots');
+      }
+
+      //  Cache the settings with both width formats
+      print('Caching printer settings');
       _cachedSettings = {
         'mediaType': mediaType,
         'darkness': darkness,
         'speed': speed,
         'printMethod': printMethod,
-        'labelWidth': labelWidth,   
+        'labelWidthInches': labelWidthInches,
+        'labelWidth': labelWidthDots,
+        'labelWidthDots': labelWidthDots,
         'labelHeight': labelHeight,
+        'labelOrientation': labelOrientation,
+        'dpi': dpi,
       };
       _settingsCached = true;
 
@@ -299,8 +287,10 @@ class PrinterSettingsHelper {
       print('  Speed: $speed (key: $_workingSpeedKey)');
       print('  Media Type: $mediaType');
       print('  Print Method: $printMethod (key: $_workingPrintMethodKey)');
-      print('  Label Width: $labelWidth dots');   
-      print('  Label Height: $labelHeight dots'); 
+      print('  Label Width: $labelWidthInches" = $labelWidthDots dots');
+      print('  Label Height: $labelHeight dots');
+      print('  Label Orientation: $labelOrientation');
+      print('  DPI: $dpi');
       print('-----------------------------------');
 
       return _cachedSettings!;
@@ -311,8 +301,12 @@ class PrinterSettingsHelper {
         'darkness': null,
         'speed': null,
         'printMethod': null,
-        'labelWidth': null,   
-        'labelHeight': null,  
+        'labelWidthInches': null,
+        'labelWidth': null,
+        'labelWidthDots': null,
+        'labelHeight': null,
+        'labelOrientation': null,
+        'dpi': null,
       };
     }
   }
@@ -325,8 +319,8 @@ class PrinterSettingsHelper {
     _workingPrintMethodKey = null;
     _cachedSettings = null;
     _settingsCached = false;
-    _printMethodsCached = false;  
-    _cachedPrintMethods = [];     
+    _printMethodsCached = false;
+    _cachedPrintMethods = [];
   }
 
   // Add method to clear cache if needed
@@ -343,14 +337,14 @@ class PrinterSettingsHelper {
       print('Cache not initialized, creating new cache');
       _cachedSettings = {};
     }
-    
+
     // Update only the provided keys
     _cachedSettings!.addAll(updatedValues);
     _settingsCached = true;
-    
+
     print('Cache updated with new values:');
     updatedValues.forEach((key, value) {
-      print('   $key: $value');
+      print('$key: $value');
     });
   }
 }

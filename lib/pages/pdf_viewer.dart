@@ -5,11 +5,7 @@ class PdfViewerPage extends StatefulWidget {
   final String pdfUrl;
   final String title;
 
-  const PdfViewerPage({
-    super.key,
-    required this.pdfUrl,
-    required this.title,
-  });
+  const PdfViewerPage({super.key, required this.pdfUrl, required this.title});
 
   @override
   State<PdfViewerPage> createState() => _PdfViewerPageState();
@@ -21,15 +17,25 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _showSearchBar = false;
   PdfTextSearchResult? _searchResult;
+  bool _hasSearchText = false;
 
   @override
   void initState() {
     _pdfViewerController = PdfViewerController();
+    _searchController.addListener(_onSearchTextChanged);
     super.initState();
+  }
+
+  void _onSearchTextChanged() {
+    final hasText = _searchController.text.isNotEmpty;
+    if (hasText != _hasSearchText) {
+      setState(() => _hasSearchText = hasText);
+    }
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchTextChanged);
     _pdfViewerController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -77,10 +83,7 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
         backgroundColor: const Color(0xFFF5F5F8),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            color: Colors.black,
-            height: 1.0,
-          ),
+          child: Container(color: Colors.black, height: 1.0),
         ),
         actions: [
           // Search Icon
@@ -143,20 +146,17 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
                                   horizontal: 12,
                                   vertical: 8,
                                 ),
-                                suffixIcon: _searchController.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: const Icon(Icons.clear),
-                                        onPressed: () {
-                                          _searchController.clear();
-                                          _searchResult?.clear();
-                                          setState(() {});
-                                        },
-                                      )
-                                    : null,
+                                suffixIcon:
+                                    _hasSearchText
+                                        ? IconButton(
+                                          icon: const Icon(Icons.clear),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            _searchResult?.clear();
+                                          },
+                                        )
+                                        : null,
                               ),
-                              onChanged: (text) {
-                                setState(() {});
-                              },
                               onSubmitted: _searchText,
                             ),
                           ),
@@ -165,21 +165,23 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
                           IconButton(
                             icon: const Icon(Icons.arrow_upward),
                             tooltip: 'Previous',
-                            onPressed: _searchController.text.isEmpty
-                                ? null
-                                : () {
-                                    _searchResult?.previousInstance();
-                                  },
+                            onPressed:
+                                !_hasSearchText
+                                    ? null
+                                    : () {
+                                      _searchResult?.previousInstance();
+                                    },
                           ),
                           // Next Match
                           IconButton(
                             icon: const Icon(Icons.arrow_downward),
                             tooltip: 'Next',
-                            onPressed: _searchController.text.isEmpty
-                                ? null
-                                : () {
-                                    _searchResult?.nextInstance();
-                                  },
+                            onPressed:
+                                !_hasSearchText
+                                    ? null
+                                    : () {
+                                      _searchResult?.nextInstance();
+                                    },
                           ),
                         ],
                       ),
@@ -199,7 +201,7 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
                       if (_searchResult != null &&
                           !_searchResult!.hasResult &&
                           _searchResult!.isSearchCompleted &&
-                          _searchController.text.isNotEmpty)
+                          _hasSearchText)
                         Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
