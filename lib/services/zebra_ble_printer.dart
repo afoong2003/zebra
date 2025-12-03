@@ -11,7 +11,7 @@ const String ZEBRA_READ_CHAR_UUID = "38EB4A81-C570-11E3-9507-0002A5D5C51B";
 class ZebraBlePrinter {
   final BluetoothDevice device;
   BluetoothCharacteristic? _writeCharacteristic;
-  BluetoothCharacteristic? _readCharacteristic; 
+  BluetoothCharacteristic? _readCharacteristic;
   StreamSubscription<List<int>>? _readSubscription;
 
   int _chunksToBeSent = 0;
@@ -27,7 +27,7 @@ class ZebraBlePrinter {
     try {
       await device.connect(
         license: License.free,
-        timeout: const Duration(seconds: 15)
+        timeout: const Duration(seconds: 15),
       );
       print("Connected to ${device.platformName}");
 
@@ -37,7 +37,7 @@ class ZebraBlePrinter {
       } catch (e) {
         print("MTU negotiation failed, using default: $e");
       }
-/*
+      /*
       try {
         await device.requestConnectionPriority(connectionPriorityRequest: ConnectionPriority.high);
         print("Connection priority set to HIGH");
@@ -46,18 +46,17 @@ class ZebraBlePrinter {
       }
 */
       List<BluetoothService> services = await device.discoverServices();
-      print("Discovering services...");
 
       for (BluetoothService service in services) {
-        if (service.serviceUuid.toString().toUpperCase() == ZEBRA_SERVICE_UUID.toUpperCase()) {
-          print("Found Zebra Service: ${service.serviceUuid}");
-          for (BluetoothCharacteristic characteristic in service.characteristics) {
-            String charUuid = characteristic.characteristicUuid.toString().toUpperCase();
+        if (service.serviceUuid.toString().toUpperCase() ==
+            ZEBRA_SERVICE_UUID.toUpperCase()) {
+          for (BluetoothCharacteristic characteristic
+              in service.characteristics) {
+            String charUuid =
+                characteristic.characteristicUuid.toString().toUpperCase();
             if (charUuid == ZEBRA_WRITE_CHAR_UUID.toUpperCase()) {
-              print("Found Write Characteristic: $charUuid");
               _writeCharacteristic = characteristic;
             } else if (charUuid == ZEBRA_READ_CHAR_UUID.toUpperCase()) {
-              print("Found Read Characteristic: $charUuid");
               _readCharacteristic = characteristic;
               await setupReadNotifications(characteristic);
             }
@@ -66,10 +65,8 @@ class ZebraBlePrinter {
       }
 
       if (_writeCharacteristic != null && _readCharacteristic != null) {
-        print("Ready to send commands.");
         return true;
       } else {
-        print("Error: Zebra characteristics not found.");
         await disconnect();
         return false;
       }
@@ -96,9 +93,12 @@ class ZebraBlePrinter {
     await _writeCompleter?.future;
   }
 
-  Future<void> _writeDataInChunks(List<int> data, BluetoothCharacteristic characteristic) async {
+  Future<void> _writeDataInChunks(
+    List<int> data,
+    BluetoothCharacteristic characteristic,
+  ) async {
     _writeCompleter = Completer<void>();
-    
+
     int mtuValue = device.mtuNow;
     int chunkSize = mtuValue - 3;
 
@@ -107,7 +107,9 @@ class ZebraBlePrinter {
 
     _chunksSent = 0;
     _chunksToBeSent = (data.length / chunkSize).ceil();
-    print("Data length: ${data.length}, Chunk size: $chunkSize (MTU: $mtuValue), Chunks: $_chunksToBeSent");
+    print(
+      "Data length: ${data.length}, Chunk size: $chunkSize (MTU: $mtuValue), Chunks: $_chunksToBeSent",
+    );
 
     for (int i = 0; i < data.length; i += chunkSize) {
       int end = min(i + chunkSize, data.length);
@@ -138,11 +140,9 @@ class ZebraBlePrinter {
               // Small print: minimal delay
               delayMs = 30;
             }
-            
             print("Waiting ${delayMs}ms before next chunk...");
             await Future.delayed(Duration(milliseconds: delayMs));
           }
-
         } catch (e) {
           /*
           retryCount++;
@@ -162,12 +162,10 @@ class ZebraBlePrinter {
             rethrow;
           }
           */
-           
           //print("error");
-          
         }
       }
-/*
+      /*
       if (!chunkSent) {
         final error = "Failed to send chunk $_chunksSent after $maxRetries attempts";
         print("$error");
@@ -177,21 +175,27 @@ class ZebraBlePrinter {
     }
 
 */
-    print(" All chunks sent successfully.");
-    if (!_writeCompleter!.isCompleted) _writeCompleter!.complete();
+      print(" All chunks sent successfully.");
+      if (!_writeCompleter!.isCompleted) _writeCompleter!.complete();
+    }
   }
-}
 
-  Future<void> setupReadNotifications(BluetoothCharacteristic characteristic) async {
-    if (characteristic.properties.notify || characteristic.properties.indicate) {
+  Future<void> setupReadNotifications(
+    BluetoothCharacteristic characteristic,
+  ) async {
+    if (characteristic.properties.notify ||
+        characteristic.properties.indicate) {
       try {
         await characteristic.setNotifyValue(true);
-        _readSubscription = characteristic.onValueReceived.listen((value) {
-          String receivedData = utf8.decode(value, allowMalformed: true);
-          print("Received Data: $receivedData");
-        }, onError: (error) {
-          print("Error receiving data: $error");
-        });
+        _readSubscription = characteristic.onValueReceived.listen(
+          (value) {
+            String receivedData = utf8.decode(value, allowMalformed: true);
+            print("Received Data: $receivedData");
+          },
+          onError: (error) {
+            print("Error receiving data: $error");
+          },
+        );
         print("Subscribed to read characteristic.");
       } catch (e) {
         print("Error setting up notifications: $e");
@@ -215,7 +219,10 @@ class ZebraBlePrinter {
     }
   }
 
-  Future<String?> sendCommandAndGetResponse(String command, {Duration timeout = const Duration(seconds: 2)}) async {
+  Future<String?> sendCommandAndGetResponse(
+    String command, {
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
     if (_readCharacteristic == null) {
       throw Exception("Read characteristic not available");
     }
@@ -235,17 +242,23 @@ class ZebraBlePrinter {
       }
     });
 
-    await sendCommand(command);
-
-    String? response;
     try {
-      response = await completer.future.timeout(timeout, onTimeout: () {
-        subscription.cancel();
-        return buffer.isEmpty ? null : buffer.toString();
-      });
-    } catch (_) {
-      response = null;
+      await sendCommand(command);
+
+      String? response;
+      try {
+        response = await completer.future.timeout(
+          timeout,
+          onTimeout: () {
+            return buffer.isEmpty ? null : buffer.toString();
+          },
+        );
+      } catch (_) {
+        response = null;
+      }
+      return response;
+    } finally {
+      await subscription.cancel();
     }
-    return response;
   }
 }

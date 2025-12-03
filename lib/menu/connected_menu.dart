@@ -35,12 +35,9 @@ class ConnectedMenu extends StatelessWidget {
             title: Text('Home'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(
+              Navigator.popUntil(
                 context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => PrinterDashboard(printerName: printerName),
-                ),
+                (route) => route.settings.name == '/dashboard' || route.isFirst,
               );
             },
           ),

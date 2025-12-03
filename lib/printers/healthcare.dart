@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/fetch_data.dart';
 
-
 class HealthcarePage extends StatefulWidget {
   const HealthcarePage({super.key});
 
@@ -19,15 +18,10 @@ class _HealthcarePageState extends State<HealthcarePage> {
         backgroundColor: Color(0xFFF5F5F8),
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(1.0),
-          child: Container(
-            color: Colors.black,
-            height: 1.0,
-          ),
+          child: Container(color: Colors.black, height: 1.0),
         ),
       ),
-      body: Center(
-        child: Text('Healthcare Page'),
-      ),
+      body: Center(child: Text('Healthcare Page')),
     );
   }
 }

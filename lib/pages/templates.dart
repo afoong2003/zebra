@@ -6,6 +6,13 @@ import 'package:http/http.dart' as http;
 import '../services/zebra_service.dart';
 import '../services/printer_settings_helper.dart';
 
+class TemplatesResult {
+  final bool errorAcknowledged;
+  final SystemStatus? errorStatus;
+
+  TemplatesResult({this.errorAcknowledged = false, this.errorStatus});
+}
+
 class UsePrinter extends StatefulWidget {
   final String printerName;
 
@@ -21,7 +28,7 @@ class _UsePrinterState extends State<UsePrinter> {
 
   // Default Template ZPL commands
   final Map<String, String> _defaultTemplates = {
-    'Template 1': '''
+    'Example 1': '''
 ^FX Top section with logo, name and address.
 ^CF0,90
 ^FO75,75^GB150,150,150^FS
@@ -60,44 +67,6 @@ class _UsePrinterState extends State<UsePrinter> {
 ^CF0,285
 ^FO705,1430^FDCA^FS
 ''',
-    'Template 2': '''
-^FX Simple Address Label
-^CF0,60
-^FO50,50^FDFrom: Your Company^FS
-^FO50,120^FD123 Business St^FS
-^FO50,190^FDCity, ST 12345^FS
-
-^FO50,300^GB700,3,3^FS
-
-^CF0,50
-^FO50,350^FDTo: Customer Name^FS
-^FO50,410^FD456 Customer Ave^FS
-^FO50,470^FDTown, ST 67890^FS
-''',
-    'Template 3': '''
-^FX Barcode Label
-^CF0,50
-^FO100,50^FDProduct: ABC-123^FS
-^FO100,120^FDSKU: 987654321^FS
-
-^BY3,3,100
-^FO150,200^BC^FD987654321^FS
-
-^CF0,40
-^FO100,350^FDPrice: \$99.99^FS
-^FO100,410^FDQuantity: 100^FS
-''',
-    'Template 4': '''
-^FX QR Code Label
-^CF0,50
-^FO50,50^FDScan for Details^FS
-
-^FO100,120^BQN,2,6^FDQA,https://example.com/product/12345^FS
-
-^CF0,40
-^FO50,380^FDProduct ID: 12345^FS
-^FO50,440^FDManufactured: 2024-01^FS
-''',
   };
 
   Map<String, String> _templateNames = {};
@@ -105,6 +74,8 @@ class _UsePrinterState extends State<UsePrinter> {
 
   final Map<String, Uint8List?> _templateThumbnails = {};
   bool _isLoadingThumbnails = false;
+  bool _errorAcknowledged = false;
+  SystemStatus? _lastErrorStatus;
 
   @override
   void initState() {
@@ -156,6 +127,14 @@ class _UsePrinterState extends State<UsePrinter> {
         }
       }
     });
+
+    // This ensures Example 1 always uses these dimensions regardless of printer settings
+    const example1Dpi = 300;
+    final example1WidthDots = (4.0 * example1Dpi).round(); // 1200 dots
+    final example1HeightDots = (6.1 * example1Dpi).round(); // 1830 dots
+    await prefs.setInt('template_width_Example 1', example1WidthDots);
+    await prefs.setInt('template_height_Example 1', example1HeightDots);
+    await prefs.setInt('template_render_dpi_Example 1', example1Dpi);
 
     _loadAllThumbnails();
   }
@@ -311,7 +290,22 @@ ${_templates[templateKey]}
   Future<void> _addNewTemplate() async {
     final templateKey = _generateTemplateKey();
     final templateName = 'New Template';
-    final defaultZpl = '^FX New Label\n^CF0,50\n^FO50,50^FDNew Label^FS';
+    final defaultZpl =
+        ''; /*'^FX New Label\n^CF0,50\n^FO50,50^FDNew Label^FS';*/
+
+    // Get current printer dimensions to save with the template
+    final settings = await _settingsHelper.fetchAllSettings(
+      forceRefresh: false,
+    );
+    final prefs = await SharedPreferences.getInstance();
+
+    final widthDots =
+        int.tryParse(
+          settings['labelWidthDots'] ?? settings['labelWidth'] ?? '1200',
+        ) ??
+        1200;
+    final heightDots = int.tryParse(settings['labelHeight'] ?? '1800') ?? 1800;
+    final printerDpi = int.tryParse(settings['dpi'] ?? '203') ?? 203;
 
     setState(() {
       _templates[templateKey] = defaultZpl;
@@ -320,6 +314,11 @@ ${_templates[templateKey]}
 
     await _saveTemplateZpl(templateKey, defaultZpl);
     await _saveTemplateNames();
+
+    // Save dimensions with the template so it's independent of printer settings
+    await prefs.setInt('template_width_$templateKey', widthDots);
+    await prefs.setInt('template_height_$templateKey', heightDots);
+    await prefs.setInt('template_render_dpi_$templateKey', printerDpi);
 
     // Open the template for editing
     if (!mounted) return;
@@ -374,49 +373,69 @@ ${_templates[templateKey]}
         false;
   }
 
+  TemplatesResult _buildResult() {
+    return TemplatesResult(
+      errorAcknowledged: _errorAcknowledged,
+      errorStatus: _lastErrorStatus,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F8),
-      appBar: AppBar(
-        scrolledUnderElevation: 0.0,
-        title: Text('Print to ${widget.printerName}'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          // Return result with error status when navigating back
+          Navigator.of(context).pop(_buildResult());
+        }
+      },
+      child: Scaffold(
         backgroundColor: const Color(0xFFF5F5F8),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1.0),
-          child: Container(color: Colors.black, height: 1.0),
+        appBar: AppBar(
+          scrolledUnderElevation: 0.0,
+          title: Text('Print to ${widget.printerName}'),
+          backgroundColor: const Color(0xFFF5F5F8),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(_buildResult()),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1.0),
+            child: Container(color: Colors.black, height: 1.0),
+          ),
         ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Template Grid - aligned to top
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.2,
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Template Grid - aligned to top
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.2,
+                  ),
+                  itemCount: _templates.length + 1, // +1 for add button
+                  itemBuilder: (context, index) {
+                    // Last item is the "Add Template" card
+                    if (index == _templates.length) {
+                      return _buildAddTemplateCard();
+                    }
+                    final templateKey = _templates.keys.elementAt(index);
+                    final templateName =
+                        _templateNames[templateKey] ?? templateKey;
+                    return _buildTemplateCard(templateKey, templateName);
+                  },
                 ),
-                itemCount: _templates.length + 1, // +1 for add button
-                itemBuilder: (context, index) {
-                  // Last item is the "Add Template" card
-                  if (index == _templates.length) {
-                    return _buildAddTemplateCard();
-                  }
-                  final templateKey = _templates.keys.elementAt(index);
-                  final templateName =
-                      _templateNames[templateKey] ?? templateKey;
-                  return _buildTemplateCard(templateKey, templateName);
-                },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -615,11 +634,17 @@ ${_templates[templateKey]}
               );
             },
             onDelete: () async {
-              Navigator.pop(context);
               final confirmed = await _showDeleteConfirmation(templateName);
               if (confirmed) {
                 await _deleteTemplate(templateKey);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               }
+            },
+            onErrorAcknowledged: (status) {
+              _errorAcknowledged = true;
+              _lastErrorStatus = status;
             },
           ),
     );
@@ -734,6 +759,7 @@ class _TemplatePreviewDialog extends StatefulWidget {
   final Function(String newName) onNameChanged;
   final Function(String newZpl) onZplChanged;
   final VoidCallback onDelete;
+  final Function(SystemStatus status)? onErrorAcknowledged;
 
   const _TemplatePreviewDialog({
     required this.templateKey,
@@ -747,6 +773,7 @@ class _TemplatePreviewDialog extends StatefulWidget {
     required this.onNameChanged,
     required this.onZplChanged,
     required this.onDelete,
+    this.onErrorAcknowledged,
   });
 
   @override
@@ -931,7 +958,7 @@ ${_zplController.text}
     if (result == true && _hasUnsavedZplChanges) {
       await widget.onZplChanged(_zplController.text); // Save ZPL changes
       // Wait for rate limit before loading preview (thumbnail already loading)
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
       _loadLabelPreview();
     }
@@ -1063,7 +1090,11 @@ ${_zplController.text}
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
+                onPressed: () {
+                  // Notify parent that error was acknowledged with the status
+                  widget.onErrorAcknowledged?.call(status);
+                  Navigator.pop(dialogContext);
+                },
                 child: const Text(
                   'Close',
                   style: TextStyle(color: Colors.black),
@@ -1204,7 +1235,7 @@ ${_zplController.text}
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       icon: const Icon(Icons.code, size: 18),
-                      label: const Text('Edit ZPL Code'),
+                      label: const Text('Edit ZPL'),
                     ),
                   ),
                   const SizedBox(width: 12),

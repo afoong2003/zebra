@@ -14,6 +14,8 @@ class _PrinterSettingsState extends State<PrinterSettings> {
 
   late TextEditingController _widthController;
   late TextEditingController _heightController;
+  late FocusNode _widthFocusNode;
+  late FocusNode _heightFocusNode;
 
   String? mediaType;
   double? labelWidth;
@@ -597,13 +599,17 @@ class _PrinterSettingsState extends State<PrinterSettings> {
       print('=== Settings saved successfully ===');
 
       if (mounted) {
+        /*
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Settings saved successfully'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
+            
           ),
+          
         );
+        */
       }
     } catch (e) {
       print('Error saving settings: $e');
@@ -658,13 +664,44 @@ class _PrinterSettingsState extends State<PrinterSettings> {
     super.initState();
     _widthController = TextEditingController();
     _heightController = TextEditingController();
+    _widthFocusNode = FocusNode();
+    _heightFocusNode = FocusNode();
+
+    // Add listeners to update values and trigger hasChanges check
+    _widthController.addListener(_onWidthChanged);
+    _heightController.addListener(_onHeightChanged);
+
     fetchSettings();
+  }
+
+  void _onWidthChanged() {
+    final value = _widthController.text;
+    final newWidth = value.isNotEmpty ? double.tryParse(value) : null;
+    if (newWidth != labelWidth) {
+      labelWidth = newWidth;
+      // Only call setState to update hasChanges indicator, not to rebuild text fields
+      setState(() {});
+    }
+  }
+
+  void _onHeightChanged() {
+    final value = _heightController.text;
+    final newHeight = value.isNotEmpty ? double.tryParse(value) : null;
+    if (newHeight != labelHeight) {
+      labelHeight = newHeight;
+      // Only call setState to update hasChanges indicator, not to rebuild text fields
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _widthController.removeListener(_onWidthChanged);
+    _heightController.removeListener(_onHeightChanged);
     _widthController.dispose();
     _heightController.dispose();
+    _widthFocusNode.dispose();
+    _heightFocusNode.dispose();
     super.dispose();
   }
 
@@ -773,10 +810,8 @@ class _PrinterSettingsState extends State<PrinterSettings> {
                                           Expanded(
                                             child: TextField(
                                               cursorColor: Colors.black,
-                                              key: ValueKey(
-                                                'width_$labelWidth',
-                                              ),
                                               controller: _widthController,
+                                              focusNode: _widthFocusNode,
                                               keyboardType:
                                                   const TextInputType.numberWithOptions(
                                                     decimal: true,
@@ -803,36 +838,22 @@ class _PrinterSettingsState extends State<PrinterSettings> {
                                                       ),
                                                     ),
                                               ),
-                                              onChanged: (value) {
-                                                if (value.isNotEmpty) {
-                                                  labelWidth = double.tryParse(
-                                                    value,
-                                                  );
-                                                } else {
-                                                  labelWidth = null;
-                                                }
-                                              },
                                               onSubmitted: (value) {
                                                 final width = double.tryParse(
                                                   value,
                                                 );
                                                 if (width == null ||
                                                     width <= 0) {
-                                                  setState(() {
-                                                    labelWidth =
-                                                        _originalLabelWidth ??
-                                                        4.0;
-                                                    _widthController
-                                                        .text = labelWidth!
-                                                        .toStringAsFixed(1);
-                                                  });
+                                                  labelWidth =
+                                                      _originalLabelWidth ??
+                                                      4.0;
+                                                  _widthController
+                                                      .text = labelWidth!
+                                                      .toStringAsFixed(1);
                                                 } else {
-                                                  setState(() {
-                                                    labelWidth = width;
-                                                    _widthController
-                                                        .text = width
-                                                        .toStringAsFixed(1);
-                                                  });
+                                                  labelWidth = width;
+                                                  _widthController.text = width
+                                                      .toStringAsFixed(1);
                                                 }
                                               },
                                             ),
@@ -842,6 +863,7 @@ class _PrinterSettingsState extends State<PrinterSettings> {
                                             child: TextField(
                                               cursorColor: Colors.black,
                                               controller: _heightController,
+                                              focusNode: _heightFocusNode,
                                               keyboardType:
                                                   const TextInputType.numberWithOptions(
                                                     decimal: true,
@@ -868,36 +890,22 @@ class _PrinterSettingsState extends State<PrinterSettings> {
                                                       ),
                                                     ),
                                               ),
-                                              onChanged: (value) {
-                                                if (value.isNotEmpty) {
-                                                  labelHeight = double.tryParse(
-                                                    value,
-                                                  );
-                                                } else {
-                                                  labelHeight = null;
-                                                }
-                                              },
                                               onSubmitted: (value) {
                                                 final height = double.tryParse(
                                                   value,
                                                 );
                                                 if (height == null ||
                                                     height <= 0) {
-                                                  setState(() {
-                                                    labelHeight =
-                                                        _originalLabelHeight ??
-                                                        6.0;
-                                                    _heightController
-                                                        .text = labelHeight!
-                                                        .toStringAsFixed(1);
-                                                  });
+                                                  labelHeight =
+                                                      _originalLabelHeight ??
+                                                      6.0;
+                                                  _heightController
+                                                      .text = labelHeight!
+                                                      .toStringAsFixed(1);
                                                 } else {
-                                                  setState(() {
-                                                    labelHeight = height;
-                                                    _heightController
-                                                        .text = height
-                                                        .toStringAsFixed(1);
-                                                  });
+                                                  labelHeight = height;
+                                                  _heightController.text =
+                                                      height.toStringAsFixed(1);
                                                 }
                                               },
                                             ),

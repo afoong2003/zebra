@@ -94,8 +94,9 @@ class _PrinterDashboardState extends State<PrinterDashboard> {
         }
         _startStatusMonitoring();
       } else if (!hasErrorsNow) {
-        // No errors, stop monitoring if running
+        // No errors, stop monitoring if running and reset dialog flag for future errors
         _stopStatusMonitoring();
+        _dialogShown = false;
       }
     } catch (e) {
       print('Error refreshing system status: $e');
@@ -141,10 +142,11 @@ class _PrinterDashboardState extends State<PrinterDashboard> {
         'Status check - Errors: ${status.hasErrors}, Warnings: ${status.hasWarnings}',
       );
 
-      // If no more errors, stop monitoring
+      // If no more errors, stop monitoring and reset dialog flag for future errors
       if (!status.hasErrors) {
         print('No errors detected, stopping monitoring');
         _stopStatusMonitoring();
+        _dialogShown = false;
       }
     } catch (e) {
       print('Error checking system status: $e');
@@ -613,7 +615,7 @@ $zplContent
                       'Errors:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.red,
+                        color: Colors.black,
                         fontSize: 16,
                       ),
                     ),
@@ -624,11 +626,13 @@ $zplContent
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            /*
                             const Icon(
                               Icons.error_outline,
                               size: 16,
                               color: Colors.red,
                             ),
+                            */
                             const SizedBox(width: 8),
                             Expanded(child: Text(error)),
                           ],
@@ -815,19 +819,30 @@ $zplContent
                           // Status Row with error indicator
                           Row(
                             children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color:
-                                      _systemStatus?.hasErrors == true
-                                          ? Colors.red
-                                          : (_systemStatus?.hasWarnings == true
-                                              ? Colors.orange
-                                              : Colors.green),
+                              // Show icon for errors/warnings, green dot for ready
+                              if (_systemStatus?.hasIssues == true)
+                                GestureDetector(
+                                  onTap: _showSystemStatusDialog,
+                                  child: Icon(
+                                    _systemStatus!.hasErrors
+                                        ? Icons.error
+                                        : Icons.warning,
+                                    size: 16,
+                                    color:
+                                        _systemStatus!.hasErrors
+                                            ? Colors.red
+                                            : Colors.orange,
+                                  ),
+                                )
+                              else
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.green,
+                                  ),
                                 ),
-                              ),
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
@@ -837,25 +852,11 @@ $zplContent
                                           ? 'Warning'
                                           : 'Ready to Print'),
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     color: Colors.black,
                                   ),
                                 ),
                               ),
-                              if (_systemStatus?.hasIssues == true) ...[
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: _showSystemStatusDialog,
-                                  child: Icon(
-                                    Icons.info_outline,
-                                    size: 16,
-                                    color:
-                                        _systemStatus!.hasErrors
-                                            ? Colors.red
-                                            : Colors.orange,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -918,7 +919,23 @@ $zplContent
                                       printerName: widget.printerName,
                                     ),
                               ),
-                            ).then((_) {
+                            ).then((result) {
+                              // Handle result from templates page
+                              if (result is TemplatesResult) {
+                                // If user already acknowledged error, don't show dialog again
+                                if (result.errorAcknowledged) {
+                                  _dialogShown = true;
+                                }
+                                // Immediately update status if error was returned (faster than polling)
+                                if (result.errorStatus != null) {
+                                  setState(() {
+                                    _systemStatus = result.errorStatus;
+                                  });
+                                  // Start monitoring since we have errors
+                                  _startStatusMonitoring();
+                                  return; // Skip the refresh since we already have status
+                                }
+                              }
                               // Refresh system status when returning from UsePrinter
                               _refreshSystemStatus();
                             });
@@ -1018,7 +1035,7 @@ $zplContent
               ),
               child: Icon(icon, size: size * 0.33, color: color),
             ),
-            SizedBox(height: size * 0.08),
+            SizedBox(height: size * 0.01),
             Text(
               label,
               style: TextStyle(
@@ -1030,6 +1047,13 @@ $zplContent
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
+            if (label == 'Upload File') ...[
+              const Text(
+                'PDF, PNG, JPEG, GIF',
+                style: TextStyle(color: Colors.black, fontSize: 8),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),

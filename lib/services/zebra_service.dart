@@ -254,7 +254,6 @@ class ZebraService {
     if (nibble5 & 0x8 != 0) errors.add('Black Mark not Found');
     if (nibble5 & 0x4 != 0) errors.add('Black Mark Calibrate Error');
     if (nibble5 & 0x2 != 0) errors.add('Retract Function Timed Out');
-    if (nibble5 & 0x1 != 0) errors.add('Printer Paused');
 
     return errors;
   }

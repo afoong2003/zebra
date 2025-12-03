@@ -32,14 +32,7 @@ class UnconnectedMenu extends StatelessWidget {
             leading: Icon(Icons.home_outlined),
             title: Text('Home'),
             onTap: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => const MyHomePage(title: 'Printer Setup'),
-                ),
-                (Route<dynamic> route) => false,
-              );
+              Navigator.pop(context);
             },
           ),
           Divider(

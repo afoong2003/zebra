@@ -189,6 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       navigator.push(
         MaterialPageRoute(
+          settings: const RouteSettings(name: '/dashboard'),
           builder:
               (context) => PrinterDashboard(
                 printerName:
@@ -502,6 +503,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                             zebraResults.isEmpty) {
                                           return Column(
                                             children: [
+                                              /*
                                               //placeholder printer
                                               ListTile(
                                                 leading: Icon(
@@ -530,6 +532,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                                 },
                                               ),
                                               //placeholder printer
+                                              */
                                             ],
                                           );
                                         } else {
