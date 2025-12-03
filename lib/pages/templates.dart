@@ -676,32 +676,22 @@ ${_templates[templateKey]}
       final templateContent = _templates[templateKey]!;
       final trimmedContent = templateContent.trim();
 
+      // User always provides ^XA and ^XZ - find the LAST ^XZ (case-insensitive) and insert ^PQ before it
+      final xzPattern = RegExp(r'\^[Xx][Zz]');
+      final matches = xzPattern.allMatches(trimmedContent).toList();
+
       String zplCommand;
-
-      // Check if template is already complete ZPL (from LabelZoom API)
-      if (trimmedContent.startsWith('^XA') && trimmedContent.endsWith('^XZ')) {
-        // Insert ^PQ before the final ^XZ for quantity
-        if (quantity > 1) {
-          zplCommand =
-              trimmedContent.substring(0, trimmedContent.length - 3) +
-              '^PQ$quantity\n^XZ';
-        } else {
-          zplCommand = trimmedContent;
-        }
-        print('Template is complete ZPL, using as-is');
+      if (matches.isNotEmpty) {
+        final lastMatch = matches.last;
+        zplCommand =
+            '${trimmedContent.substring(0, lastMatch.start)}^PQ$quantity\n${trimmedContent.substring(lastMatch.start)}';
+        print(
+          'Inserting ^PQ$quantity before final ^XZ at position ${lastMatch.start}',
+        );
       } else {
-        // Wrap raw ZPL content with proper commands
-        zplCommand = '''
-^XA
-^PW$widthDots
-^LL$heightDots
-
-$templateContent
-
-^PQ$quantity
-^XZ
-''';
-        print('Template is raw ZPL, wrapping with ^XA/^XZ');
+        // Fallback - append ^PQ before adding ^XZ if somehow missing
+        zplCommand = '$trimmedContent\n^PQ$quantity\n^XZ';
+        print('Warning: No ^XZ found, appending ^PQ$quantity and ^XZ');
       }
 
       print('Sending ZPL:');
@@ -1110,345 +1100,353 @@ ${_zplController.text}
     final widthInches = widget.widthDots / widget.printerDpi;
     final heightInches = widget.heightDots / widget.printerDpi;
 
-    return Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header with editable name
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF5F5F8),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with editable name
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5F5F8),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Editable template name
-                        _isEditingName
-                            ? Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    cursorColor: Colors.black,
-                                    controller: _nameController,
-                                    autofocus: true,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Editable template name
+                          _isEditingName
+                              ? Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      cursorColor: Colors.black,
+                                      controller: _nameController,
+                                      autofocus: true,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: Colors.black,
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
                                         ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        border: OutlineInputBorder(),
                                       ),
-                                      border: OutlineInputBorder(),
+                                      onSubmitted: (_) => _saveName(),
                                     ),
-                                    onSubmitted: (_) => _saveName(),
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.check, size: 20),
-                                  onPressed: _saveName,
-                                  tooltip: 'Save',
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 20),
-                                  onPressed: () {
-                                    _nameController.text = _currentTemplateName;
-                                    setState(() => _isEditingName = false);
-                                  },
-                                  tooltip: 'Cancel',
-                                ),
-                              ],
-                            )
-                            : Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    _currentTemplateName,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
+                                  IconButton(
+                                    icon: const Icon(Icons.check, size: 20),
+                                    onPressed: _saveName,
+                                    tooltip: 'Save',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close, size: 20),
+                                    onPressed: () {
+                                      _nameController.text =
+                                          _currentTemplateName;
+                                      setState(() => _isEditingName = false);
+                                    },
+                                    tooltip: 'Cancel',
+                                  ),
+                                ],
+                              )
+                              : Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      _currentTemplateName,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit, size: 20),
-                                  onPressed: () {
-                                    setState(() => _isEditingName = true);
-                                  },
-                                  tooltip: 'Edit name',
-                                  visualDensity: VisualDensity.compact,
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${widthInches.toStringAsFixed(2)}" × ${heightInches.toStringAsFixed(2)}"',
-                          style: TextStyle(fontSize: 12, color: Colors.black),
-                        ),
-                      ],
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    onPressed: () {
+                                      setState(() => _isEditingName = true);
+                                    },
+                                    tooltip: 'Edit name',
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.all(4),
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ],
+                              ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widthInches.toStringAsFixed(2)}" × ${heightInches.toStringAsFixed(2)}"',
+                            style: TextStyle(fontSize: 12, color: Colors.black),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  // Only show dialog close button when not editing name
-                  if (!_isEditingName)
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.black),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                ],
+                    // Only show dialog close button when not editing name
+                    if (!_isEditingName)
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.black),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                  ],
+                ),
               ),
-            ),
 
-            // Action buttons row (Edit ZPL and Delete)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-                  // Edit ZPL Button
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _openZplEditor,
+              // Action buttons row (Edit ZPL and Delete)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    // Edit ZPL Button
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _openZplEditor,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.black,
+                          side: const BorderSide(color: Colors.black),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(Icons.code, size: 18),
+                        label: const Text('Edit ZPL'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Delete Button
+                    OutlinedButton(
+                      onPressed: widget.onDelete,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: const BorderSide(color: Colors.black),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
                       ),
-                      icon: const Icon(Icons.code, size: 18),
-                      label: const Text('Edit ZPL'),
+                      child: const Icon(Icons.delete_outline, size: 20),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Delete Button
-                  OutlinedButton(
-                    onPressed: widget.onDelete,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
-                    ),
-                    child: const Icon(Icons.delete_outline, size: 20),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            // Preview Area
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.all(20),
+              // Preview Area
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white),
+                    //borderRadius: BorderRadius.circular(8),
+                    //color: Colors.black,
+                  ),
+                  child: _buildPreviewArea(),
+                ),
+              ),
+
+              // Quantity and Print Section
+              Container(
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white),
-                  //borderRadius: BorderRadius.circular(8),
-                  //color: Colors.black,
-                ),
-                child: _buildPreviewArea(),
-              ),
-            ),
-
-            // Quantity and Print Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F8),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                //border: Border(top: BorderSide(color: Colors.grey)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Print Quantity:',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      SizedBox(
-                        width: 80,
-                        child: TextField(
-                          cursorColor: Colors.black,
-                          controller: _quantityController,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color:
-                                    _isValidQuantity
-                                        ? Colors.black
-                                        : Colors.red,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color:
-                                    _isValidQuantity
-                                        ? Colors.black
-                                        : Colors.red,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color:
-                                    _isValidQuantity
-                                        ? Colors.black
-                                        : Colors.red,
-                                width: 2,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            errorText: !_isValidQuantity ? 'Min 1' : null,
-                            errorStyle: const TextStyle(fontSize: 10),
-                          ),
-                          onChanged: (value) {
-                            if (value.isEmpty) {
-                              if (_isValidQuantity != false || _quantity != 0) {
-                                setState(() {
-                                  _isValidQuantity = false;
-                                  _quantity = 0;
-                                });
-                              }
-                              return;
-                            }
-
-                            final qty = int.tryParse(value);
-
-                            if (qty == null || qty < 1) {
-                              final newQty = qty ?? 0;
-                              if (_isValidQuantity != false ||
-                                  _quantity != newQty) {
-                                setState(() {
-                                  _isValidQuantity = false;
-                                  _quantity = newQty;
-                                });
-                              }
-                            } else if (qty > 999) {
-                              if (_isValidQuantity != true ||
-                                  _quantity != 999) {
-                                setState(() {
-                                  _isValidQuantity = true;
-                                  _quantity = 999;
-                                  _quantityController.text = '999';
-                                  _quantityController
-                                      .selection = TextSelection.fromPosition(
-                                    TextPosition(
-                                      offset: _quantityController.text.length,
-                                    ),
-                                  );
-                                });
-                              }
-                            } else {
-                              if (_isValidQuantity != true ||
-                                  _quantity != qty) {
-                                setState(() {
-                                  _isValidQuantity = true;
-                                  _quantity = qty;
-                                });
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
+                  color: const Color(0xFFF5F5F8),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          (_isValidQuantity && !_isPrinting)
-                              ? Colors.black
-                              : Colors.grey,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: (_isValidQuantity && !_isPrinting) ? 2 : 0,
-                    ),
-                    onPressed:
-                        (_isValidQuantity && !_isPrinting)
-                            ? _handlePrint
-                            : null,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  //border: Border(top: BorderSide(color: Colors.grey)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
                       children: [
-                        if (_isPrinting)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        else
-                          Icon(
-                            Icons.print,
-                            size: 20,
-                            color:
-                                _isValidQuantity ? Colors.white : Colors.grey,
-                          ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _isPrinting ? 'Printing...' : 'Print Label',
+                        const Text(
+                          'Print Quantity:',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                (_isValidQuantity && !_isPrinting)
-                                    ? Colors.white
-                                    : Colors.grey,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 80,
+                          child: TextField(
+                            cursorColor: Colors.black,
+                            controller: _quantityController,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color:
+                                      _isValidQuantity
+                                          ? Colors.black
+                                          : Colors.red,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color:
+                                      _isValidQuantity
+                                          ? Colors.black
+                                          : Colors.red,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  color:
+                                      _isValidQuantity
+                                          ? Colors.black
+                                          : Colors.red,
+                                  width: 2,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              errorText: !_isValidQuantity ? 'Min 1' : null,
+                              errorStyle: const TextStyle(fontSize: 10),
+                            ),
+                            onChanged: (value) {
+                              if (value.isEmpty) {
+                                if (_isValidQuantity != false ||
+                                    _quantity != 0) {
+                                  setState(() {
+                                    _isValidQuantity = false;
+                                    _quantity = 0;
+                                  });
+                                }
+                                return;
+                              }
+
+                              final qty = int.tryParse(value);
+
+                              if (qty == null || qty < 1) {
+                                final newQty = qty ?? 0;
+                                if (_isValidQuantity != false ||
+                                    _quantity != newQty) {
+                                  setState(() {
+                                    _isValidQuantity = false;
+                                    _quantity = newQty;
+                                  });
+                                }
+                              } else if (qty > 999) {
+                                if (_isValidQuantity != true ||
+                                    _quantity != 999) {
+                                  setState(() {
+                                    _isValidQuantity = true;
+                                    _quantity = 999;
+                                    _quantityController.text = '999';
+                                    _quantityController
+                                        .selection = TextSelection.fromPosition(
+                                      TextPosition(
+                                        offset: _quantityController.text.length,
+                                      ),
+                                    );
+                                  });
+                                }
+                              } else {
+                                if (_isValidQuantity != true ||
+                                    _quantity != qty) {
+                                  setState(() {
+                                    _isValidQuantity = true;
+                                    _quantity = qty;
+                                  });
+                                }
+                              }
+                            },
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            (_isValidQuantity && !_isPrinting)
+                                ? Colors.black
+                                : Colors.grey,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: (_isValidQuantity && !_isPrinting) ? 2 : 0,
+                      ),
+                      onPressed:
+                          (_isValidQuantity && !_isPrinting)
+                              ? _handlePrint
+                              : null,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_isPrinting)
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.print,
+                              size: 20,
+                              color:
+                                  _isValidQuantity ? Colors.white : Colors.grey,
+                            ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isPrinting ? 'Printing...' : 'Print Label',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  (_isValidQuantity && !_isPrinting)
+                                      ? Colors.white
+                                      : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
